@@ -1,7 +1,8 @@
 name: kickin_network
 description: "Kickin network provides utilities to handle network efficiently and reliably"
-version: 0.0.1-dev.1
-homepage:
+version: 0.0.1-dev.2
+homepage: https://github.com/okikday/kickin_network
+repository: https://github.com/okikday/kickin_network
 
 environment:
   sdk: ^3.9.5
@@ -12,7 +13,7 @@ dependencies:
   flutter:
     sdk: flutter
   internet_connection_checker_plus: ^3.0.0
-  kickin_storage: ^0.0.1-dev.1
+  kickin_storage: ^0.0.1-dev.2
   logger: ^2.7.0
 
 dev_dependencies:

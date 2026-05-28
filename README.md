@@ -212,7 +212,7 @@ Or add manually to `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  kickin_network: 0.0.1-dev.1
+  kickin_network: 0.0.1-dev.2
 ```
 
 **Dependencies:** [`dio`](https://pub.dev/packages/dio) · [`internet_connection_checker_plus`](https://pub.dev/packages/internet_connection_checker_plus) · [`kickin_storage`](https://pub.dev/packages/kickin_storage)
