@@ -1,3 +1,6 @@
+## 0.0.1-dev.5
+- Added a try(RequestType)Result function for all KRestRequest classes
+
 ## 0.0.1-dev.4
 - Improved error handling by adding [errorOverride] params for the KRestRequest classes and allowing override on the global api base
 

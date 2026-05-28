@@ -114,6 +114,13 @@ class MyApi extends KRestApiBase with KApiCacheMixin, KApiMonitorMixin {
   static final shared = MyApi._();
 
   late final users = UsersApi(this);
+  
+  // @override
+  // Object? globalErrorOverride(Object? error) {
+  // if (error == null) return null;
+  //  if (error is Map && error.containsKey("error")) return error;
+  //  return null;
+  // }
 }
 
 class UsersApi extends KRestApi<Map<String, dynamic>> {
@@ -133,9 +140,19 @@ class UsersApi extends KRestApi<Map<String, dynamic>> {
       headers: await loadAuthHeaders(),
     ).get();
 
+    // OR
+    // final apiResult = await getUser.copyWith(
+    // headers: await loadAuthHeaders(),
+    // ).getResult()
+    // We can then access apiResult.value or apiResult.error
+    // errors can be overriden in KRestApiBase or set in the KRestRequest
+    // e.g 
+    
+
     if (result != null) setCache(result);
     return result;
   }
+  
 }
 
 Future<void> main() async {
@@ -212,7 +229,7 @@ Or add manually to `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  kickin_network: 0.0.1-dev.4
+  kickin_network: 0.0.1-dev.5
 ```
 
 **Dependencies:** [`dio`](https://pub.dev/packages/dio) · [`internet_connection_checker_plus`](https://pub.dev/packages/internet_connection_checker_plus) · [`kickin_storage`](https://pub.dev/packages/kickin_storage)

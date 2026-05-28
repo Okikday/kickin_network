@@ -116,5 +116,9 @@ abstract class KRestApiBase {
   /// primary client.
   void setExternalDio(Dio dio) => _externalDio = dio;
 
-  Object? globalErrorOverride(Object? error) => null;
+  Object? globalErrorOverride(Object? error) {
+    if (error == null) return null;
+    if (error is Map && error.containsKey("error")) return error["error"];
+    return null;
+  }
 }

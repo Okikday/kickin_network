@@ -218,8 +218,10 @@ class KGetRequest<TDecoded> extends KRestRequest<TDecoded> {
   Future<KResponse<Raw, TDecoded>> tryGetResponse<Raw>() => _getResponse(true);
 
   Future<TDecoded?> get() => _getResponse(false).then((v) => v.value);
-
   Future<TDecoded?> tryGet<Raw>() => _getResponse(true).then((v) => v.value);
+
+  Future<ApiResult<TDecoded?>> getResult() => _getResponse(false).then((v) => v.result);
+  Future<ApiResult<TDecoded?>> tryGetResult() => _getResponse(true).then((v) => v.result);
 
   /// Returns a copy of this request with the supplied overrides.
   KGetRequest<TDecoded> copyWith({
@@ -320,6 +322,8 @@ class KPostRequest<TDecoded> extends KRestRequest<TDecoded> {
   Future<KResponse<Raw, TDecoded>> tryPostResponse<Raw>() => _postResponse(true);
   Future<TDecoded?> post() => _postResponse(false).then((v) => v.value);
   Future<TDecoded?> tryPost() => _postResponse(true).then((v) => v.value);
+  Future<ApiResult<TDecoded?>> postResult() => _postResponse(false).then((v) => v.result);
+  Future<ApiResult<TDecoded?>> tryPostResult() => _postResponse(true).then((v) => v.result);
 
   KPostRequest<TDecoded> copyWith({
     String? Function(String)? pathTransform,
@@ -422,6 +426,8 @@ class KPutRequest<TDecoded> extends KRestRequest<TDecoded> {
   Future<KResponse<Raw, TDecoded>> tryPutResponse<Raw>() => _putResponse(true);
   Future<TDecoded?> put() => _putResponse(false).then((v) => v.value);
   Future<TDecoded?> tryPut() => _putResponse(true).then((v) => v.value);
+  Future<ApiResult<TDecoded?>> putResult() => _putResponse(false).then((v) => v.result);
+  Future<ApiResult<TDecoded?>> tryPutResult() => _putResponse(true).then((v) => v.result);
 
   KPutRequest<TDecoded> copyWith({
     String? Function(String)? pathTransform,
@@ -524,6 +530,8 @@ class KPatchRequest<TDecoded> extends KRestRequest<TDecoded> {
   Future<KResponse<Raw, TDecoded>> tryPatchResponse<Raw>() => _patchResponse(true);
   Future<TDecoded?> patch() => _patchResponse(false).then((v) => v.value);
   Future<TDecoded?> tryPatch() => _patchResponse(true).then((v) => v.value);
+  Future<ApiResult<TDecoded?>> patchResult() => _patchResponse(false).then((v) => v.result);
+  Future<ApiResult<TDecoded?>> tryPatchResult() => _patchResponse(true).then((v) => v.result);
 
   KPatchRequest<TDecoded> copyWith({
     String? Function(String)? pathTransform,
@@ -621,6 +629,8 @@ class KDeleteRequest<TDecoded> extends KRestRequest<TDecoded> {
   Future<KResponse<Raw, TDecoded>> tryDeleteResponse<Raw>() => _deleteResponse(true);
   Future<TDecoded?> delete() => _deleteResponse(false).then((v) => v.value);
   Future<TDecoded?> tryDelete() => _deleteResponse(true).then((v) => v.value);
+  Future<ApiResult<TDecoded?>> deleteResult() => _deleteResponse(false).then((v) => v.result);
+  Future<ApiResult<TDecoded?>> tryDeleteResult() => _deleteResponse(true).then((v) => v.result);
 
   KDeleteRequest<TDecoded> copyWith({
     String? Function(String)? pathTransform,
@@ -726,6 +736,8 @@ class KDownloadRequest<TDecoded> extends KRestRequest<TDecoded> {
   Future<KResponse<dynamic, TDecoded>> tryDownloadResponse() => _downloadResponse(true);
   Future<void> download() => _downloadResponse(false).then((v) => v.value);
   Future<void> tryDownload() => _downloadResponse(true).then((v) => v.value);
+  Future<ApiResult<void>> downloadResult() => _downloadResponse(false).then((v) => v.result);
+  Future<ApiResult<void>> tryDownloadResult() => _downloadResponse(true).then((v) => v.result);
 
   KDownloadRequest<TDecoded> copyWith({
     String? Function(String)? pathTransform,
@@ -832,6 +844,8 @@ class KRequest<TDecoded> extends KRestRequest<TDecoded> {
   Future<KResponse<Raw, TDecoded>> tryRequest<Raw>() => _request(true);
   Future<TDecoded?> get() => _request(false).then((v) => v.value);
   Future<TDecoded?> tryGet() => _request(true).then((v) => v.value);
+  Future<ApiResult<TDecoded?>> getResult() => _request(false).then((v) => v.result);
+  Future<ApiResult<TDecoded?>> tryGetResult() => _request(true).then((v) => v.result);
 
   KRequest<TDecoded> copyWith({
     String? Function(String)? pathTransform,
