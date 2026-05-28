@@ -1,3 +1,6 @@
+## 0.0.1-dev.6
+- Improved stacktrace logging
+
 ## 0.0.1-dev.5
 - Added a try(RequestType)Result function for all KRestRequest classes
 

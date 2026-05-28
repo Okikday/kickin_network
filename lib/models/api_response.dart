@@ -5,6 +5,7 @@ typedef ApiResult<Formatted> = ({Formatted? value, Object? error});
 class KResponse<Raw, Formatted> extends Response<Raw> {
   final Formatted Function(Raw data, Response<Raw> _)? decoder;
   final Object? error;
+
   KResponse._({
     required super.data,
     this.decoder,
@@ -39,19 +40,23 @@ class KResponse<Raw, Formatted> extends Response<Raw> {
 
   bool get isSuccess => data != null;
   Raw? get raw => data;
-
   Formatted? get decoded => value;
 
-  /// Don't call this if you didn't provide a [decoder] function, otherwise it would return null;
+  /// Don't call this if you didn't provide a [decoder] function, otherwise it would return null.
   Formatted? get value {
     final data = this.data;
     if (data == null) return null;
     try {
       if (decoder == null) return (data as Formatted);
-      final decoded = decoder!(data, this);
-      return decoded;
-    } catch (e) {
-      log("Decoding failed for request: ${requestOptions.uri}");
+      return decoder!(data, this);
+    } catch (e, stackTrace) {
+      log(
+        'Decoding failed for ${requestOptions.method} ${requestOptions.uri}\n'
+        'Cause    : $e',
+        name: 'KResponse<$Formatted> <== ${data.runtimeType}',
+        error: e,
+        stackTrace: stackTrace,
+      );
       rethrow;
     }
   }

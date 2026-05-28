@@ -32,5 +32,6 @@ class NetworkLog {
   // Expose basic methods
   static void request(String message) => _logger.i(message);
   static void success(String message) => _logger.d(message);
-  static void error(String message, [dynamic error]) => _logger.e(message, error: error);
+  static void error(String message, [dynamic error, StackTrace? st]) =>
+      _logger.e(message, error: error, stackTrace: st);
 }
