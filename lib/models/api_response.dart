@@ -1,5 +1,7 @@
 part of '../src/rest/rest_api_base.dart';
 
+typedef ApiResult<Formatted> = ({Formatted? value, Object? error});
+
 class KResponse<Raw, Formatted> extends Response<Raw> {
   final Formatted Function(Raw data, Response<Raw> _)? decoder;
   final Object? error;
@@ -53,4 +55,6 @@ class KResponse<Raw, Formatted> extends Response<Raw> {
       rethrow;
     }
   }
+
+  ApiResult<Formatted> get result => (value: value, error: error);
 }

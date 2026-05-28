@@ -115,4 +115,6 @@ abstract class KRestApiBase {
   /// Replaces the external Dio instance used by requests that opt out of the
   /// primary client.
   void setExternalDio(Dio dio) => _externalDio = dio;
+
+  Object? globalErrorOverride(Object? error) => null;
 }

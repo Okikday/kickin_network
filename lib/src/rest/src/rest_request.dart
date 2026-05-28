@@ -2,6 +2,9 @@
 // remember variants
 part of '../rest_api_base.dart';
 
+typedef ErrorOverrideCallback = Object? Function(dynamic data);
+typedef DecodedCallback<TDecoded> = TDecoded Function(dynamic data, Response _);
+
 class KRestRequest<TDecoded> {
   /// Shared request configuration used by every request wrapper in this file.
   /// Mostly use static values to declare. You can use copyWith from the other kind of requests to make proper changes
@@ -18,6 +21,7 @@ class KRestRequest<TDecoded> {
     this.decoder,
     this.logOptions,
     this.useBaseUrl = true,
+    this.errorOverride,
   }) : options = options?.copyWith(headers: headers) ?? Options(headers: headers);
 
   final KRestApi _api;
@@ -31,6 +35,7 @@ class KRestRequest<TDecoded> {
   final Map<String, dynamic>? queryParams;
   final CancelToken? cancelToken;
   final void Function(int, int)? onReceiveProgress;
+  final ErrorOverrideCallback? errorOverride;
 
   final LogOptions? logOptions;
 
@@ -40,7 +45,7 @@ class KRestRequest<TDecoded> {
 
   /// Converts the raw Dio response payload into the client-facing output type.
   /// [data] == [Response.data]
-  final TDecoded Function(dynamic data, Response _)? decoder;
+  final DecodedCallback<TDecoded>? decoder;
 
   /// Selects the Dio instance that matches [usePrimary].
   Dio get _dio => usePrimary ? _api._parent._primaryDio : _api._parent._externalDio;
@@ -58,7 +63,7 @@ class KRestRequest<TDecoded> {
     method: method,
   );
 
-  /// For getting the final path after considering [useBaseUrl] and the parent's [baseUrl]. This is used internally for logging and error handling, but you can also use it in your custom [resolve] logic or when overriding the path in the copyWith methods.
+  /// For getting the final path after considering [useBaseUrl] and the parent's [baseUrl] joined.
   late final _transformedPath = (useBaseUrl && _apiBase._baseUrl.isNotEmpty) ? "${_apiBase._baseUrl}$path" : path;
   String get transformedPath => _transformedPath;
 
@@ -67,7 +72,11 @@ class KRestRequest<TDecoded> {
     final result = await response;
     if (kDebugMode) _logResponse(logOptions ?? _apiBase._logOptions, method, result);
 
-    return KResponse<Raw, TDecoded>.fromDioResponse(result, decoder: decoder);
+    return KResponse<Raw, TDecoded>.fromDioResponse(
+      result,
+      decoder: decoder,
+      error: errorOverride?.call(result.data) ?? _api._parent.globalErrorOverride(result.data),
+    );
   }
 
   Future<KResponse<Raw, TDecoded>> _tryRunRequest<Raw>(String method, {required Future<Response<Raw>> response}) async {
@@ -78,7 +87,7 @@ class KRestRequest<TDecoded> {
       final response = KResponse<Raw, TDecoded>.fromDioResponse(
         Response(requestOptions: _requestOptionsFor(method)),
         decoder: decoder,
-        error: e,
+        error: errorOverride?.call(e) ?? _api._parent.globalErrorOverride(e),
       );
       if (kDebugMode) _logResponse(logOptions ?? _apiBase._logOptions, method, response);
       return response;
@@ -153,6 +162,7 @@ class KRestRequest<TDecoded> {
     }
   }
 
+  @override
   String toString() {
     return 'KRestRequest(path: $path, usePrimary: $usePrimary, headers: $headers, data: $data, options: $options, queryParams: $queryParams, cancelToken: $cancelToken, onReceiveProgress: $onReceiveProgress, logOptions: $logOptions, useBaseUrl: $useBaseUrl)';
   }
@@ -170,6 +180,7 @@ class KGetRequest<TDecoded> extends KRestRequest<TDecoded> {
     super.onReceiveProgress,
     super.decoder,
     super.logOptions,
+    super.errorOverride,
   });
 
   KGetRequest._(
@@ -185,16 +196,12 @@ class KGetRequest<TDecoded> extends KRestRequest<TDecoded> {
     super.decoder,
     super.logOptions,
     super.useBaseUrl,
+    super.errorOverride,
   });
 
   static const method = 'GET';
 
-  // /// This can be used to modify or replace the entire request operation
-  // final FutureOr<KGetRequest<TDecoded>> Function(KGetRequest<TDecoded>)? resolve;
-
   Future<KResponse<Raw, TDecoded>> _getResponse<Raw>(bool tryRun) async {
-    //
-
     final response = _dio.get<Raw>(
       _transformedPath,
       options: options,
@@ -226,7 +233,8 @@ class KGetRequest<TDecoded> extends KRestRequest<TDecoded> {
     void Function(int, int)? onReceiveProgress,
     LogOptions? logOptions,
     bool? useBaseUrl,
-    TDecoded Function(dynamic data, Response _)? decoder,
+    DecodedCallback<TDecoded>? decoder,
+    ErrorOverrideCallback? errorOverride,
   }) => KGetRequest<TDecoded>._(
     _api,
     path: pathTransform?.call(path) ?? path,
@@ -240,6 +248,7 @@ class KGetRequest<TDecoded> extends KRestRequest<TDecoded> {
     decoder: decoder ?? this.decoder,
     logOptions: logOptions ?? this.logOptions,
     useBaseUrl: useBaseUrl ?? this.useBaseUrl,
+    errorOverride: errorOverride ?? this.errorOverride,
   );
 
   factory KGetRequest.from(KRestRequest<TDecoded> r) => KGetRequest<TDecoded>._(
@@ -255,6 +264,7 @@ class KGetRequest<TDecoded> extends KRestRequest<TDecoded> {
     decoder: r.decoder,
     useBaseUrl: r.useBaseUrl,
     logOptions: r.logOptions,
+    errorOverride: r.errorOverride,
   );
 }
 
@@ -270,6 +280,7 @@ class KPostRequest<TDecoded> extends KRestRequest<TDecoded> {
     super.decoder,
     super.logOptions,
     super.useBaseUrl,
+    super.errorOverride,
   });
   KPostRequest._(
     super._api, {
@@ -285,6 +296,7 @@ class KPostRequest<TDecoded> extends KRestRequest<TDecoded> {
     super.decoder,
     super.logOptions,
     super.useBaseUrl,
+    super.errorOverride,
   });
 
   static const method = 'POST';
@@ -321,7 +333,8 @@ class KPostRequest<TDecoded> extends KRestRequest<TDecoded> {
     void Function(int, int)? onReceiveProgress,
     LogOptions? logOptions,
     bool? useBaseUrl,
-    TDecoded Function(dynamic data, Response _)? decoder,
+    DecodedCallback<TDecoded>? decoder,
+    ErrorOverrideCallback? errorOverride,
   }) => KPostRequest<TDecoded>._(
     _api,
     path: pathTransform?.call(path) ?? path,
@@ -336,6 +349,7 @@ class KPostRequest<TDecoded> extends KRestRequest<TDecoded> {
     decoder: decoder ?? this.decoder,
     logOptions: logOptions ?? this.logOptions,
     useBaseUrl: useBaseUrl ?? this.useBaseUrl,
+    errorOverride: errorOverride ?? this.errorOverride,
   );
 
   factory KPostRequest.from(KRestRequest<TDecoded> r) => KPostRequest<TDecoded>._(
@@ -351,6 +365,7 @@ class KPostRequest<TDecoded> extends KRestRequest<TDecoded> {
     decoder: r.decoder,
     useBaseUrl: r.useBaseUrl,
     logOptions: r.logOptions,
+    errorOverride: r.errorOverride,
   );
 }
 
@@ -360,17 +375,14 @@ class KPutRequest<TDecoded> extends KRestRequest<TDecoded> {
     super._api, {
     required super.path,
     super.usePrimary,
-    // super.headers,
-    // super.data,
     super.decoder,
     super.options,
-    // super.queryParams,
     super.cancelToken,
     super.onReceiveProgress,
     this.onSendProgress,
     super.logOptions,
     super.useBaseUrl,
-    // this.resolve,
+    super.errorOverride,
   });
   KPutRequest._(
     super._api, {
@@ -386,6 +398,7 @@ class KPutRequest<TDecoded> extends KRestRequest<TDecoded> {
     this.onSendProgress,
     super.logOptions,
     super.useBaseUrl,
+    super.errorOverride,
   });
 
   static const method = 'PUT';
@@ -422,7 +435,8 @@ class KPutRequest<TDecoded> extends KRestRequest<TDecoded> {
     void Function(int, int)? onReceiveProgress,
     LogOptions? logOptions,
     bool? useBaseUrl,
-    TDecoded Function(dynamic data, Response _)? decoder,
+    DecodedCallback<TDecoded>? decoder,
+    ErrorOverrideCallback? errorOverride,
   }) => KPutRequest<TDecoded>._(
     _api,
     path: pathTransform?.call(path) ?? path,
@@ -437,6 +451,7 @@ class KPutRequest<TDecoded> extends KRestRequest<TDecoded> {
     decoder: decoder ?? this.decoder,
     logOptions: logOptions ?? this.logOptions,
     useBaseUrl: useBaseUrl ?? this.useBaseUrl,
+    errorOverride: errorOverride ?? this.errorOverride,
   );
 
   factory KPutRequest.from(KRestRequest<TDecoded> r) => KPutRequest<TDecoded>._(
@@ -452,6 +467,7 @@ class KPutRequest<TDecoded> extends KRestRequest<TDecoded> {
     decoder: r.decoder,
     useBaseUrl: r.useBaseUrl,
     logOptions: r.logOptions,
+    errorOverride: r.errorOverride,
   );
 }
 
@@ -471,6 +487,7 @@ class KPatchRequest<TDecoded> extends KRestRequest<TDecoded> {
     super.decoder,
     super.logOptions,
     super.useBaseUrl,
+    super.errorOverride,
   });
   KPatchRequest(
     super._api, {
@@ -483,6 +500,7 @@ class KPatchRequest<TDecoded> extends KRestRequest<TDecoded> {
     this.onSendProgress,
     super.logOptions,
     super.useBaseUrl,
+    super.errorOverride,
   });
 
   static const method = 'PATCH';
@@ -519,7 +537,8 @@ class KPatchRequest<TDecoded> extends KRestRequest<TDecoded> {
     void Function(int, int)? onReceiveProgress,
     LogOptions? logOptions,
     bool? useBaseUrl,
-    TDecoded Function(dynamic data, Response _)? decoder,
+    DecodedCallback<TDecoded>? decoder,
+    ErrorOverrideCallback? errorOverride,
   }) => KPatchRequest<TDecoded>._(
     _api,
     path: pathTransform?.call(path) ?? path,
@@ -534,6 +553,7 @@ class KPatchRequest<TDecoded> extends KRestRequest<TDecoded> {
     decoder: decoder ?? this.decoder,
     logOptions: logOptions ?? this.logOptions,
     useBaseUrl: useBaseUrl ?? this.useBaseUrl,
+    errorOverride: errorOverride ?? this.errorOverride,
   );
 
   factory KPatchRequest.from(KRestRequest<TDecoded> r) => KPatchRequest<TDecoded>._(
@@ -549,6 +569,7 @@ class KPatchRequest<TDecoded> extends KRestRequest<TDecoded> {
     decoder: r.decoder,
     useBaseUrl: r.useBaseUrl,
     logOptions: r.logOptions,
+    errorOverride: r.errorOverride,
   );
 }
 
@@ -567,6 +588,7 @@ class KDeleteRequest<TDecoded> extends KRestRequest<TDecoded> {
     super.decoder,
     super.logOptions,
     super.useBaseUrl,
+    super.errorOverride,
   });
 
   KDeleteRequest(
@@ -579,6 +601,7 @@ class KDeleteRequest<TDecoded> extends KRestRequest<TDecoded> {
     super.onReceiveProgress,
     super.logOptions,
     super.useBaseUrl,
+    super.errorOverride,
   });
 
   static const method = 'DELETE';
@@ -609,7 +632,8 @@ class KDeleteRequest<TDecoded> extends KRestRequest<TDecoded> {
     Map<String, dynamic>? queryParams,
     LogOptions? logOptions,
     bool? useBaseUrl,
-    TDecoded Function(dynamic data, Response _)? decoder,
+    DecodedCallback<TDecoded>? decoder,
+    ErrorOverrideCallback? errorOverride,
   }) => KDeleteRequest<TDecoded>._(
     _api,
     path: pathTransform?.call(path) ?? path,
@@ -622,12 +646,10 @@ class KDeleteRequest<TDecoded> extends KRestRequest<TDecoded> {
     decoder: decoder ?? this.decoder,
     logOptions: logOptions ?? this.logOptions,
     useBaseUrl: useBaseUrl ?? this.useBaseUrl,
+    errorOverride: errorOverride ?? this.errorOverride,
   );
 
-  factory KDeleteRequest.from(
-    KRestRequest<TDecoded> r, {
-    FutureOr<KDeleteRequest<TDecoded>> Function(KDeleteRequest<TDecoded>)? resolve,
-  }) => KDeleteRequest<TDecoded>._(
+  factory KDeleteRequest.from(KRestRequest<TDecoded> r) => KDeleteRequest<TDecoded>._(
     r._api,
     path: r.path,
     usePrimary: r.usePrimary,
@@ -640,6 +662,7 @@ class KDeleteRequest<TDecoded> extends KRestRequest<TDecoded> {
     decoder: r.decoder,
     useBaseUrl: r.useBaseUrl,
     logOptions: r.logOptions,
+    errorOverride: r.errorOverride,
   );
 }
 
@@ -657,6 +680,7 @@ class KDownloadRequest<TDecoded> extends KRestRequest<TDecoded> {
     this.lengthHeader = Headers.contentLengthHeader,
     super.logOptions,
     super.useBaseUrl,
+    super.errorOverride,
   });
   KDownloadRequest._(
     super._api, {
@@ -672,6 +696,7 @@ class KDownloadRequest<TDecoded> extends KRestRequest<TDecoded> {
     this.lengthHeader = Headers.contentLengthHeader,
     super.logOptions,
     super.useBaseUrl,
+    super.errorOverride,
   });
 
   static const method = 'DOWNLOAD';
@@ -715,6 +740,7 @@ class KDownloadRequest<TDecoded> extends KRestRequest<TDecoded> {
     FileAccessMode? fileAccessMode,
     LogOptions? logOptions,
     bool? useBaseUrl,
+    ErrorOverrideCallback? errorOverride,
   }) => KDownloadRequest<TDecoded>._(
     _api,
     path: pathTransform?.call(path) ?? path,
@@ -730,13 +756,13 @@ class KDownloadRequest<TDecoded> extends KRestRequest<TDecoded> {
     lengthHeader: lengthHeader ?? this.lengthHeader,
     logOptions: logOptions ?? this.logOptions,
     useBaseUrl: useBaseUrl ?? this.useBaseUrl,
+    errorOverride: errorOverride ?? this.errorOverride,
   );
 
   factory KDownloadRequest.from(
     KRestRequest<TDecoded> r, {
     required dynamic savePath,
     String lengthHeader = Headers.contentLengthHeader,
-    FutureOr<KDownloadRequest<TDecoded>> Function(KDownloadRequest<TDecoded>)? resolve,
   }) => KDownloadRequest<TDecoded>._(
     r._api,
     path: r.path,
@@ -749,6 +775,7 @@ class KDownloadRequest<TDecoded> extends KRestRequest<TDecoded> {
     lengthHeader: lengthHeader,
     useBaseUrl: r.useBaseUrl,
     logOptions: r.logOptions,
+    errorOverride: r.errorOverride,
   );
 }
 
@@ -764,6 +791,7 @@ class KRequest<TDecoded> extends KRestRequest<TDecoded> {
     this.onSendProgress,
     super.logOptions,
     super.useBaseUrl,
+    super.errorOverride,
   });
 
   KRequest._(
@@ -780,6 +808,7 @@ class KRequest<TDecoded> extends KRestRequest<TDecoded> {
     this.onSendProgress,
     super.logOptions,
     super.useBaseUrl,
+    super.errorOverride,
   });
 
   static const method = 'REQUEST';
@@ -815,7 +844,8 @@ class KRequest<TDecoded> extends KRestRequest<TDecoded> {
     void Function(int, int)? onReceiveProgress,
     LogOptions? logOptions,
     bool? useBaseUrl,
-    TDecoded Function(dynamic data, Response _)? decoder,
+    DecodedCallback<TDecoded>? decoder,
+    ErrorOverrideCallback? errorOverride,
   }) => KRequest<TDecoded>._(
     _api,
     path: pathTransform?.call(path) ?? path,
@@ -829,12 +859,10 @@ class KRequest<TDecoded> extends KRestRequest<TDecoded> {
     decoder: decoder ?? this.decoder,
     logOptions: logOptions ?? this.logOptions,
     useBaseUrl: useBaseUrl ?? this.useBaseUrl,
+    errorOverride: errorOverride ?? this.errorOverride,
   );
 
-  factory KRequest.from(
-    KRestRequest<TDecoded> r, {
-    FutureOr<KRequest<TDecoded>> Function(KRequest<TDecoded>)? resolve,
-  }) => KRequest<TDecoded>._(
+  factory KRequest.from(KRestRequest<TDecoded> r) => KRequest<TDecoded>._(
     r._api,
     path: r.path,
     usePrimary: r.usePrimary,
@@ -847,5 +875,6 @@ class KRequest<TDecoded> extends KRestRequest<TDecoded> {
     decoder: r.decoder,
     useBaseUrl: r.useBaseUrl,
     logOptions: r.logOptions,
+    errorOverride: r.errorOverride,
   );
 }
