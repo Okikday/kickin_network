@@ -1,3 +1,6 @@
+## 0.0.1-dev.8
+- Export missing classes
+
 ## 0.0.1-dev.7
 - Breaking change: Unified all methods on the KRestRequest classes to use similar methods for requests
 - Updated ApiResult to a class from Record (breaking*)
