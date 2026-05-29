@@ -17,6 +17,7 @@ part '../../models/log_options.dart';
 part 'src/api_monitor_mixin.dart';
 part 'src/api_cache_mixin.dart';
 part 'src/rest_request.dart';
+part 'src/ext_on_rest_request.dart';
 
 part 'rest_api.dart';
 
@@ -64,8 +65,18 @@ abstract class KRestApiBase {
   bool _enabledMonitoring = kDebugMode;
   String _baseUrl = '';
 
-  Dio _primaryDio = Dio();
-  Dio _externalDio = Dio();
+  Dio? _pDio;
+  Dio? _eDio;
+
+  Dio get _primaryDio {
+    _pDio ??= Dio();
+    return _pDio!;
+  }
+
+  Dio get _externalDio {
+    _eDio ??= Dio();
+    return _eDio!;
+  }
 
   LogOptions _logOptions = const LogOptions();
 
@@ -110,15 +121,56 @@ abstract class KRestApiBase {
   // =================================================
 
   /// Replaces the primary Dio instance used by requests that opt into it.
-  void setPrimaryDio(Dio dio) => _primaryDio = dio;
+  void setPrimaryDio(Dio dio) => _pDio = dio;
 
   /// Replaces the external Dio instance used by requests that opt out of the
   /// primary client.
-  void setExternalDio(Dio dio) => _externalDio = dio;
+  void setExternalDio(Dio dio) => _eDio = dio;
 
-  Object? globalErrorOverride(Object? error) {
-    if (error == null) return null;
-    if (error is Map && error.containsKey("error")) return error["error"];
-    return null;
+  Interceptors get primaryInterceptors => _primaryDio.interceptors;
+  BaseOptions get primaryOptions => _primaryDio.options;
+  set primaryOptions(BaseOptions options) => _primaryDio.options = options;
+  Transformer get primaryTransformer => _primaryDio.transformer;
+  set primaryTransformer(Transformer transformer) => _primaryDio.transformer = transformer;
+
+  Interceptors get externalInterceptors => _externalDio.interceptors;
+  BaseOptions get externalOptions => _externalDio.options;
+  set externalOptions(BaseOptions options) => _externalDio.options = options;
+  Transformer get externalTransformer => _externalDio.transformer;
+  set externalTransformer(Transformer transformer) => _externalDio.transformer = transformer;
+
+  Dio primaryClone({
+    BaseOptions? options,
+    Interceptors? interceptors,
+    HttpClientAdapter? httpClientAdapter,
+    Transformer? transformer,
+  }) => _primaryDio.clone(
+    options: options,
+    interceptors: interceptors,
+    httpClientAdapter: httpClientAdapter,
+    transformer: transformer,
+  );
+
+  Dio externalClone({
+    BaseOptions? options,
+    Interceptors? interceptors,
+    HttpClientAdapter? httpClientAdapter,
+    Transformer? transformer,
+  }) => _externalDio.clone(
+    options: options,
+    interceptors: interceptors,
+    httpClientAdapter: httpClientAdapter,
+    transformer: transformer,
+  );
+
+  String? globalErrorOverride(dynamic data, Object? error, [StackTrace? st]) {
+    if (data != null) {
+      if (data is Map && data.containsKey("error")) return data["error"].toString();
+      return null;
+    }
+    if (_logOptions.parts.contains(LogPart.errors) || _logOptions.parts.isEmpty) {
+      log("$error", error: error, stackTrace: st, name: "KRestApiBase.globalErrorOverride", level: 1000);
+    }
+    return "Error: Override Global error in [KRestApiBase] for more info";
   }
 }

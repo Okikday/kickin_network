@@ -1,6 +1,5 @@
+// ignore_for_file: public_member_api_docs, sort_constructors_first
 part of '../src/rest/rest_api_base.dart';
-
-typedef ApiResult<Formatted> = ({Formatted? value, Object? error});
 
 class KResponse<Raw, Formatted> extends Response<Raw> {
   final Formatted Function(Raw data, Response<Raw> _)? decoder;
@@ -52,7 +51,7 @@ class KResponse<Raw, Formatted> extends Response<Raw> {
     } catch (e, stackTrace) {
       log(
         'Decoding failed for ${requestOptions.method} ${requestOptions.uri}\n'
-        'Cause    : $e',
+        '$e',
         name: 'KResponse<$Formatted> <== ${data.runtimeType}',
         error: e,
         stackTrace: stackTrace,
@@ -61,5 +60,22 @@ class KResponse<Raw, Formatted> extends Response<Raw> {
     }
   }
 
-  ApiResult<Formatted> get result => (value: value, error: error);
+  ApiResult<Formatted> get result => ApiResult(value: value, error: error);
+}
+
+class ApiResult<Formatted> {
+  final Formatted? value;
+  final Object? error;
+
+  const ApiResult({this.value, this.error});
+
+  /// Could contain value, error, or both. [isSuccess] is used to check it contains a value without an error.
+  bool get isSuccess => value != null && error == null;
+
+  /// v for value
+  ApiResult<T> map<T>(T Function(Formatted v) transform) =>
+      value != null ? ApiResult<T>(value: transform(value as Formatted)) : ApiResult<T>(error: error);
+
+  ApiResult<Formatted> copyWith({Formatted? value, Object? error}) =>
+      ApiResult<Formatted>(value: value ?? this.value, error: error ?? this.error);
 }

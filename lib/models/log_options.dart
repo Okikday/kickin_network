@@ -8,7 +8,7 @@ class LogOptions {
 
   const LogOptions.none() : this(parts: const {}, maxLogLength: 0);
 
-  const LogOptions({this.parts = const {LogPart.queryParams}, this.maxLogLength = 1024});
+  const LogOptions({this.parts = const {LogPart.queryParams}, this.maxLogLength = 4096});
 
   factory LogOptions.debugAll() => LogOptions(parts: LogPart.values.toSet());
 

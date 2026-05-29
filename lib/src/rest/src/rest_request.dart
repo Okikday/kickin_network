@@ -2,7 +2,7 @@
 // remember variants
 part of '../rest_api_base.dart';
 
-typedef ErrorOverrideCallback = Object? Function(dynamic data);
+typedef ErrorOverrideCallback<Raw> = Object? Function(Raw data, Object? error, [StackTrace? st]);
 typedef DecodedCallback<TDecoded> = TDecoded Function(dynamic data, Response _);
 
 class KRestRequest<TDecoded> {
@@ -29,12 +29,14 @@ class KRestRequest<TDecoded> {
   final bool usePrimary;
 
   /// It will replace the one in [Options.headers], don't provide if you wish to use the one in the Options
-  final Map<String, String>? headers;
+  final Map<String, Object?>? headers;
   final Object? data;
   final Options? options;
   final Map<String, dynamic>? queryParams;
   final CancelToken? cancelToken;
   final void Function(int, int)? onReceiveProgress;
+
+  /// You can use it to handle error. If
   final ErrorOverrideCallback? errorOverride;
 
   final LogOptions? logOptions;
@@ -67,100 +69,11 @@ class KRestRequest<TDecoded> {
   late final _transformedPath = (useBaseUrl && _apiBase._baseUrl.isNotEmpty) ? "${_apiBase._baseUrl}$path" : path;
   String get transformedPath => _transformedPath;
 
-  Future<KResponse<Raw, TDecoded>> _runRequest<Raw>(String method, {required Future<Response<Raw>> response}) async {
-    if (kDebugMode) _logRequest(logOptions ?? _apiBase._logOptions, method);
-    final result = await response;
-    if (kDebugMode) _logResponse(logOptions ?? _apiBase._logOptions, method, result);
+  @internal
+  String get method => 'UNKNOWN';
 
-    return KResponse<Raw, TDecoded>.fromDioResponse(
-      result,
-      decoder: decoder,
-      error: errorOverride?.call(result.data) ?? _api._parent.globalErrorOverride(result.data),
-    );
-  }
-
-  Future<KResponse<Raw, TDecoded>> _tryRunRequest<Raw>(String method, {required Future<Response<Raw>> response}) async {
-    try {
-      final result = await _runRequest(method, response: response);
-      return result;
-    } catch (e) {
-      final response = KResponse<Raw, TDecoded>.fromDioResponse(
-        Response(requestOptions: _requestOptionsFor(method)),
-        decoder: decoder,
-        error: errorOverride?.call(e) ?? _api._parent.globalErrorOverride(e),
-      );
-      if (kDebugMode) _logResponse(logOptions ?? _apiBase._logOptions, method, response);
-      return response;
-    }
-  }
-
-  KGetRequest<TDecoded> toGetRequest() => KGetRequest<TDecoded>.from(this);
-  KPostRequest<TDecoded> toPostRequest() => KPostRequest<TDecoded>.from(this);
-  KPutRequest<TDecoded> toPutRequest() => KPutRequest<TDecoded>.from(this);
-  KPatchRequest<TDecoded> toPatchRequest() => KPatchRequest<TDecoded>.from(this);
-  KDeleteRequest<TDecoded> toDeleteRequest() => KDeleteRequest<TDecoded>.from(this);
-  KDownloadRequest<TDecoded> toDownloadRequest({required dynamic savePath}) =>
-      KDownloadRequest<TDecoded>.from(this, savePath: savePath);
-  KRequest<TDecoded> toRequest() => KRequest<TDecoded>.from(this);
-
-  void _logRequest(LogOptions logOptions, String method) {
-    if (logOptions.parts.isEmpty) return;
-
-    final Map<String, dynamic> output = {};
-
-    if (logOptions.parts.contains(LogPart.queryParams) && queryParams != null) {
-      output['Query'] = queryParams;
-    }
-    if (logOptions.parts.contains(LogPart.requestBody) && data != null) {
-      output['Body'] = data;
-    }
-    if (logOptions.parts.contains(LogPart.requestHeaders) && headers != null) {
-      output['Headers'] = headers;
-    }
-
-    final title = 'Request($method): $_transformedPath';
-    if (output.isNotEmpty) {
-      final prettyJson = const JsonEncoder.withIndent('  ').convert(output);
-
-      NetworkLog.request('$title\n$prettyJson');
-    } else {
-      NetworkLog.request(title);
-    }
-  }
-
-  void _logResponse<Raw>(LogOptions logOptions, String method, dynamic result) {
-    if (logOptions.parts.isEmpty) return;
-    final bool isOk = result.statusCode != null && result.statusCode! >= 200 && result.statusCode! < 300;
-    final Map<String, dynamic> output = {};
-
-    if (logOptions.parts.contains(LogPart.responseBody) && result is Response && result.data != null) {
-      String rawData = result.data.toString();
-
-      if (rawData.length > logOptions.maxLogLength) {
-        output['Data'] = '${rawData.substring(0, logOptions.maxLogLength)}... [TRUNCATED]';
-      } else {
-        output['Data'] = result.data;
-      }
-    }
-
-    if (logOptions.parts.contains(LogPart.responseHeaders) && result is Response) {
-      output['Headers'] = result.headers.map;
-    }
-
-    if (!isOk && logOptions.parts.contains(LogPart.errors) && result is KResponse && result.error != null) {
-      output['Error Details'] = result.error.toString();
-    }
-
-    final title = 'Response(${result.statusCode ?? 'ERR'}): $_transformedPath';
-
-    final prettyJson = output.isNotEmpty ? '\n${const JsonEncoder.withIndent('  ').convert(output)}' : '';
-
-    if (isOk) {
-      NetworkLog.success('$title$prettyJson');
-    } else {
-      NetworkLog.error('$title$prettyJson');
-    }
-  }
+  Future<Response<Raw>> _implResponse<Raw>() =>
+      throw "You tried sending the request on base class KRestRequest. Try converting to those that extends it";
 
   @override
   String toString() {
@@ -199,29 +112,18 @@ class KGetRequest<TDecoded> extends KRestRequest<TDecoded> {
     super.errorOverride,
   });
 
-  static const method = 'GET';
+  @override
+  String get method => 'GET';
 
-  Future<KResponse<Raw, TDecoded>> _getResponse<Raw>(bool tryRun) async {
-    final response = _dio.get<Raw>(
-      _transformedPath,
-      options: options,
-      data: data,
-      queryParameters: queryParams,
-      cancelToken: cancelToken,
-      onReceiveProgress: onReceiveProgress,
-    );
-    return tryRun ? _tryRunRequest(method, response: response) : _runRequest<Raw>(method, response: response);
-  }
-
-  Future<KResponse<Raw, TDecoded>> getResponse<Raw>() => _getResponse(false);
-
-  Future<KResponse<Raw, TDecoded>> tryGetResponse<Raw>() => _getResponse(true);
-
-  Future<TDecoded?> get() => _getResponse(false).then((v) => v.value);
-  Future<TDecoded?> tryGet<Raw>() => _getResponse(true).then((v) => v.value);
-
-  Future<ApiResult<TDecoded?>> getResult() => _getResponse(false).then((v) => v.result);
-  Future<ApiResult<TDecoded?>> tryGetResult() => _getResponse(true).then((v) => v.result);
+  @override
+  Future<Response<Raw>> _implResponse<Raw>() => _dio.get<Raw>(
+    _transformedPath,
+    options: options,
+    data: data,
+    queryParameters: queryParams,
+    cancelToken: cancelToken,
+    onReceiveProgress: onReceiveProgress,
+  );
 
   /// Returns a copy of this request with the supplied overrides.
   KGetRequest<TDecoded> copyWith({
@@ -301,29 +203,21 @@ class KPostRequest<TDecoded> extends KRestRequest<TDecoded> {
     super.errorOverride,
   });
 
-  static const method = 'POST';
+  @override
+  String get method => 'POST';
 
   final void Function(int, int)? onSendProgress;
 
-  Future<KResponse<Raw, TDecoded>> _postResponse<Raw>(bool tryRun) async {
-    final response = _dio.post<Raw>(
-      _transformedPath,
-      options: options,
-      data: data,
-      queryParameters: queryParams,
-      cancelToken: cancelToken,
-      onSendProgress: onSendProgress,
-      onReceiveProgress: onReceiveProgress,
-    );
-    return tryRun ? _tryRunRequest(method, response: response) : _runRequest<Raw>(method, response: response);
-  }
-
-  Future<KResponse<Raw, TDecoded>> postResponse<Raw>() => _postResponse(false);
-  Future<KResponse<Raw, TDecoded>> tryPostResponse<Raw>() => _postResponse(true);
-  Future<TDecoded?> post() => _postResponse(false).then((v) => v.value);
-  Future<TDecoded?> tryPost() => _postResponse(true).then((v) => v.value);
-  Future<ApiResult<TDecoded?>> postResult() => _postResponse(false).then((v) => v.result);
-  Future<ApiResult<TDecoded?>> tryPostResult() => _postResponse(true).then((v) => v.result);
+  @override
+  Future<Response<Raw>> _implResponse<Raw>() => _dio.post<Raw>(
+    _transformedPath,
+    options: options,
+    data: data,
+    queryParameters: queryParams,
+    cancelToken: cancelToken,
+    onSendProgress: onSendProgress,
+    onReceiveProgress: onReceiveProgress,
+  );
 
   KPostRequest<TDecoded> copyWith({
     String? Function(String)? pathTransform,
@@ -405,29 +299,21 @@ class KPutRequest<TDecoded> extends KRestRequest<TDecoded> {
     super.errorOverride,
   });
 
-  static const method = 'PUT';
+  @override
+  String get method => 'PUT';
 
   final void Function(int, int)? onSendProgress;
 
-  Future<KResponse<Raw, TDecoded>> _putResponse<Raw>(bool tryRun) async {
-    final response = _dio.put<Raw>(
-      _transformedPath,
-      options: options,
-      data: data,
-      queryParameters: queryParams,
-      cancelToken: cancelToken,
-      onSendProgress: onSendProgress,
-      onReceiveProgress: onReceiveProgress,
-    );
-    return tryRun ? _tryRunRequest(method, response: response) : _runRequest<Raw>(method, response: response);
-  }
-
-  Future<KResponse<Raw, TDecoded>> putResponse<Raw>() => _putResponse(false);
-  Future<KResponse<Raw, TDecoded>> tryPutResponse<Raw>() => _putResponse(true);
-  Future<TDecoded?> put() => _putResponse(false).then((v) => v.value);
-  Future<TDecoded?> tryPut() => _putResponse(true).then((v) => v.value);
-  Future<ApiResult<TDecoded?>> putResult() => _putResponse(false).then((v) => v.result);
-  Future<ApiResult<TDecoded?>> tryPutResult() => _putResponse(true).then((v) => v.result);
+  @override
+  Future<Response<Raw>> _implResponse<Raw>() => _dio.put<Raw>(
+    _transformedPath,
+    options: options,
+    data: data,
+    queryParameters: queryParams,
+    cancelToken: cancelToken,
+    onSendProgress: onSendProgress,
+    onReceiveProgress: onReceiveProgress,
+  );
 
   KPutRequest<TDecoded> copyWith({
     String? Function(String)? pathTransform,
@@ -509,29 +395,21 @@ class KPatchRequest<TDecoded> extends KRestRequest<TDecoded> {
     super.errorOverride,
   });
 
-  static const method = 'PATCH';
+  @override
+  String get method => 'PATCH';
 
   final void Function(int, int)? onSendProgress;
 
-  Future<KResponse<Raw, TDecoded>> _patchResponse<Raw>(bool tryRun) async {
-    final response = _dio.patch<Raw>(
-      _transformedPath,
-      options: options,
-      data: data,
-      queryParameters: queryParams,
-      cancelToken: cancelToken,
-      onSendProgress: onSendProgress,
-      onReceiveProgress: onReceiveProgress,
-    );
-    return tryRun ? _tryRunRequest(method, response: response) : _runRequest<Raw>(method, response: response);
-  }
-
-  Future<KResponse<Raw, TDecoded>> patchResponse<Raw>() => _patchResponse(false);
-  Future<KResponse<Raw, TDecoded>> tryPatchResponse<Raw>() => _patchResponse(true);
-  Future<TDecoded?> patch() => _patchResponse(false).then((v) => v.value);
-  Future<TDecoded?> tryPatch() => _patchResponse(true).then((v) => v.value);
-  Future<ApiResult<TDecoded?>> patchResult() => _patchResponse(false).then((v) => v.result);
-  Future<ApiResult<TDecoded?>> tryPatchResult() => _patchResponse(true).then((v) => v.result);
+  @override
+  Future<Response<Raw>> _implResponse<Raw>() => _dio.patch<Raw>(
+    _transformedPath,
+    options: options,
+    data: data,
+    queryParameters: queryParams,
+    cancelToken: cancelToken,
+    onSendProgress: onSendProgress,
+    onReceiveProgress: onReceiveProgress,
+  );
 
   KPatchRequest<TDecoded> copyWith({
     String? Function(String)? pathTransform,
@@ -612,25 +490,16 @@ class KDeleteRequest<TDecoded> extends KRestRequest<TDecoded> {
     super.errorOverride,
   });
 
-  static const method = 'DELETE';
-
-  Future<KResponse<Raw, TDecoded>> _deleteResponse<Raw>(bool tryRun) async {
-    final response = _dio.delete<Raw>(
-      _transformedPath,
-      options: options,
-      data: data,
-      queryParameters: queryParams,
-      cancelToken: cancelToken,
-    );
-    return tryRun ? _tryRunRequest(method, response: response) : _runRequest<Raw>(method, response: response);
-  }
-
-  Future<KResponse<Raw, TDecoded>> deleteResponse<Raw>() => _deleteResponse(false);
-  Future<KResponse<Raw, TDecoded>> tryDeleteResponse<Raw>() => _deleteResponse(true);
-  Future<TDecoded?> delete() => _deleteResponse(false).then((v) => v.value);
-  Future<TDecoded?> tryDelete() => _deleteResponse(true).then((v) => v.value);
-  Future<ApiResult<TDecoded?>> deleteResult() => _deleteResponse(false).then((v) => v.result);
-  Future<ApiResult<TDecoded?>> tryDeleteResult() => _deleteResponse(true).then((v) => v.result);
+  @override
+  String get method => 'DELETE';
+  @override
+  Future<Response<Raw>> _implResponse<Raw>() => _dio.delete<Raw>(
+    _transformedPath,
+    options: options,
+    data: data,
+    queryParameters: queryParams,
+    cancelToken: cancelToken,
+  );
 
   KDeleteRequest<TDecoded> copyWith({
     String? Function(String)? pathTransform,
@@ -709,35 +578,30 @@ class KDownloadRequest<TDecoded> extends KRestRequest<TDecoded> {
     super.errorOverride,
   });
 
-  static const method = 'DOWNLOAD';
+  @override
+  String get method => 'DOWNLOAD';
 
   final dynamic savePath;
   final FileAccessMode fileAccessMode;
   final bool deleteOnError;
   final String lengthHeader;
 
-  Future<KResponse<dynamic, TDecoded>> _downloadResponse(bool tryRun) async {
-    final response = _dio.download(
-      _transformedPath,
-      savePath,
-      options: options,
-      data: data,
-      fileAccessMode: fileAccessMode,
-      queryParameters: queryParams,
-      cancelToken: cancelToken,
-      lengthHeader: lengthHeader,
-      onReceiveProgress: onReceiveProgress,
-      deleteOnError: deleteOnError,
-    );
-    return tryRun ? _tryRunRequest(method, response: response) : _runRequest(method, response: response);
-  }
-
-  Future<KResponse<dynamic, TDecoded>> downloadResponse() => _downloadResponse(false);
-  Future<KResponse<dynamic, TDecoded>> tryDownloadResponse() => _downloadResponse(true);
-  Future<void> download() => _downloadResponse(false).then((v) => v.value);
-  Future<void> tryDownload() => _downloadResponse(true).then((v) => v.value);
-  Future<ApiResult<void>> downloadResult() => _downloadResponse(false).then((v) => v.result);
-  Future<ApiResult<void>> tryDownloadResult() => _downloadResponse(true).then((v) => v.result);
+  /// Do not add the generic type parameter [Raw] (excluding dynamic) when calling this method, otherwise it will cause a type error.
+  @override
+  Future<Response<Raw>> _implResponse<Raw>() =>
+      _dio.download(
+            _transformedPath,
+            savePath,
+            options: options,
+            data: data,
+            fileAccessMode: fileAccessMode,
+            queryParameters: queryParams,
+            cancelToken: cancelToken,
+            lengthHeader: lengthHeader,
+            onReceiveProgress: onReceiveProgress,
+            deleteOnError: deleteOnError,
+          )
+          as Future<Response<Raw>>;
 
   KDownloadRequest<TDecoded> copyWith({
     String? Function(String)? pathTransform,
@@ -823,29 +687,21 @@ class KRequest<TDecoded> extends KRestRequest<TDecoded> {
     super.errorOverride,
   });
 
-  static const method = 'REQUEST';
+  @override
+  String get method => 'REQUEST';
 
   final void Function(int, int)? onSendProgress;
 
-  Future<KResponse<Raw, TDecoded>> _request<Raw>(bool tryRun) async {
-    final response = _dio.request<Raw>(
-      _transformedPath,
-      options: options,
-      data: data,
-      queryParameters: queryParams,
-      cancelToken: cancelToken,
-      onSendProgress: onSendProgress,
-      onReceiveProgress: onReceiveProgress,
-    );
-    return tryRun ? _tryRunRequest(method, response: response) : _runRequest<Raw>(method, response: response);
-  }
-
-  Future<KResponse<Raw, TDecoded>> request<Raw>() => _request(false);
-  Future<KResponse<Raw, TDecoded>> tryRequest<Raw>() => _request(true);
-  Future<TDecoded?> get() => _request(false).then((v) => v.value);
-  Future<TDecoded?> tryGet() => _request(true).then((v) => v.value);
-  Future<ApiResult<TDecoded?>> getResult() => _request(false).then((v) => v.result);
-  Future<ApiResult<TDecoded?>> tryGetResult() => _request(true).then((v) => v.result);
+  @override
+  Future<Response<Raw>> _implResponse<Raw>() => _dio.request<Raw>(
+    _transformedPath,
+    options: options,
+    data: data,
+    queryParameters: queryParams,
+    cancelToken: cancelToken,
+    onSendProgress: onSendProgress,
+    onReceiveProgress: onReceiveProgress,
+  );
 
   KRequest<TDecoded> copyWith({
     String? Function(String)? pathTransform,
@@ -889,6 +745,143 @@ class KRequest<TDecoded> extends KRestRequest<TDecoded> {
     decoder: r.decoder,
     useBaseUrl: r.useBaseUrl,
     logOptions: r.logOptions,
+    errorOverride: r.errorOverride,
+  );
+}
+
+class KHeadRequest<TDecoded> extends KRestRequest<TDecoded> {
+  KHeadRequest(
+    super._api, {
+    required super.path,
+    super.usePrimary,
+    super.decoder,
+    super.options,
+    super.cancelToken,
+    super.logOptions,
+    super.useBaseUrl,
+    super.errorOverride,
+  });
+
+  KHeadRequest._(
+    super._api, {
+    required super.path,
+    super.usePrimary,
+    super.headers,
+    super.data,
+    super.decoder,
+    super.options,
+    super.queryParams,
+    super.cancelToken,
+    super.logOptions,
+    super.useBaseUrl,
+    super.errorOverride,
+  });
+
+  @override
+  String get method => 'HEAD';
+
+  @override
+  Future<Response<Raw>> _implResponse<Raw>() => _dio.head<Raw>(
+    _transformedPath,
+    options: options,
+    data: data,
+    queryParameters: queryParams,
+    cancelToken: cancelToken,
+  );
+
+  KHeadRequest<TDecoded> copyWith({
+    String? Function(String)? pathTransform,
+    bool? usePrimary,
+    Map<String, String>? headers,
+    Object? data,
+    Map<String, dynamic>? queryParams,
+    Options? options,
+    CancelToken? cancelToken,
+    void Function(int, int)? onReceiveProgress,
+    LogOptions? logOptions,
+    bool? useBaseUrl,
+    DecodedCallback<TDecoded>? decoder,
+    ErrorOverrideCallback? errorOverride,
+  }) => KHeadRequest<TDecoded>._(
+    _api,
+    path: pathTransform?.call(path) ?? path,
+    usePrimary: usePrimary ?? this.usePrimary,
+    headers: headers ?? this.headers,
+    data: data ?? this.data,
+    queryParams: queryParams ?? this.queryParams,
+    options: (options ?? this.options)?.copyWith(headers: headers ?? this.headers),
+    cancelToken: cancelToken ?? this.cancelToken,
+    decoder: decoder ?? this.decoder,
+    logOptions: logOptions ?? this.logOptions,
+    useBaseUrl: useBaseUrl ?? this.useBaseUrl,
+    errorOverride: errorOverride ?? this.errorOverride,
+  );
+
+  factory KHeadRequest.from(KRestRequest<TDecoded> r) => KHeadRequest<TDecoded>._(
+    r._api,
+    path: r.path,
+    usePrimary: r.usePrimary,
+    headers: r.headers,
+    data: r.data,
+    options: r.options,
+    queryParams: r.queryParams,
+    cancelToken: r.cancelToken,
+    decoder: r.decoder,
+    useBaseUrl: r.useBaseUrl,
+    logOptions: r.logOptions,
+    errorOverride: r.errorOverride,
+  );
+}
+
+class KFetchRequest<TDecoded> extends KRestRequest<TDecoded> {
+  KFetchRequest(
+    super._api, {
+    required this.requestOptions,
+    super.usePrimary,
+    super.decoder,
+    super.logOptions,
+    super.useBaseUrl,
+    super.errorOverride,
+  }) : super(
+         path: requestOptions.path,
+         headers: requestOptions.headers,
+         data: requestOptions.data,
+         queryParams: requestOptions.queryParameters,
+         cancelToken: requestOptions.cancelToken,
+       );
+
+  final RequestOptions requestOptions;
+
+  @override
+  String get method => "FETCH";
+
+  @override
+  Future<Response<Raw>> _implResponse<Raw>() => _dio.fetch<Raw>(requestOptions);
+
+  KFetchRequest<TDecoded> copyWith({
+    RequestOptions? requestOptions,
+    bool? usePrimary,
+    LogOptions? logOptions,
+    bool? useBaseUrl,
+    DecodedCallback<TDecoded>? decoder,
+    ErrorOverrideCallback? errorOverride,
+  }) => KFetchRequest<TDecoded>(
+    _api,
+    requestOptions: requestOptions ?? this.requestOptions,
+    usePrimary: usePrimary ?? this.usePrimary,
+    decoder: decoder ?? this.decoder,
+    logOptions: logOptions ?? this.logOptions,
+    useBaseUrl: useBaseUrl ?? this.useBaseUrl,
+    errorOverride: errorOverride ?? this.errorOverride,
+  );
+
+  factory KFetchRequest.from(KRestRequest<TDecoded> r, RequestOptions requestOptions) => KFetchRequest<TDecoded>(
+    r._api,
+    requestOptions: requestOptions,
+    usePrimary: r.usePrimary,
+    decoder: r.decoder,
+    logOptions: r.logOptions,
+    useBaseUrl: r.useBaseUrl,
     errorOverride: r.errorOverride,
   );
 }
