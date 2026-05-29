@@ -1,6 +1,6 @@
 part of '../rest_api_base.dart';
 
-extension ExtOnRestRequest<TDecoded> on KRestRequest<TDecoded> {
+extension ExtOnRestUriRequest<TDecoded> on KUriRequest<TDecoded> {
   Future<KResponse<Raw, TDecoded>> _send<Raw>(bool tryRun) async {
     try {
       if (kDebugMode) _logRequest(logOptions ?? _apiBase._logOptions, method);
@@ -48,7 +48,7 @@ extension ExtOnRestRequest<TDecoded> on KRestRequest<TDecoded> {
       output['Headers'] = headers;
     }
 
-    final title = 'Request($method): $_transformedPath';
+    final title = 'Request($method): ${uri.toString()}';
     if (output.isNotEmpty) {
       final prettyJson = const JsonEncoder.withIndent('  ').convert(output);
 
@@ -91,7 +91,7 @@ extension ExtOnRestRequest<TDecoded> on KRestRequest<TDecoded> {
       output['Error Details'] = result.error.toString();
     }
 
-    final title = 'Response(${result.statusCode ?? 'ERR'}): $_transformedPath';
+    final title = 'Response(${result.statusCode ?? 'ERR'}): ${uri.toString()}';
 
     final prettyJson = output.isNotEmpty ? '\n${const JsonEncoder.withIndent('  ').convert(output)}' : '';
 
@@ -103,19 +103,19 @@ extension ExtOnRestRequest<TDecoded> on KRestRequest<TDecoded> {
   }
 
   Future<KResponse<Raw, TDecoded>> sendResponse<Raw>() => _send(false);
-  Future<KResponse<Raw, TDecoded>> catchErrorOnSendResponse<Raw>() => _send(true);
+  Future<KResponse<Raw, TDecoded>> trySendResponse<Raw>() => _send(true);
   Future<TDecoded?> send() => _send(false).then((v) => v.value);
-  Future<TDecoded?> catchErrorOnSend() => _send(true).then((v) => v.value);
+  Future<TDecoded?> trySend() => _send(true).then((v) => v.value);
   Future<ApiResult<TDecoded?>> sendResult() => _send(false).then((v) => v.result);
-  Future<ApiResult<TDecoded?>> catchErrorOnSendResult() => _send(true).then((v) => v.result);
+  Future<ApiResult<TDecoded?>> trySendResult() => _send(true).then((v) => v.result);
 
-  /// Do not convert from Other Request types to another Request type unless it's a [KRequest], otherwise you might lose some of the properties that are only available in those specific request types. For example, converting from [KPostRequest] to [KGetRequest] would lose the body of the request, which is not available in [KGetRequest].
-  KGetRequest<TDecoded> toGet() => KGetRequest<TDecoded>.from(this);
-  KPostRequest<TDecoded> toPost() => KPostRequest<TDecoded>.from(this);
-  KPutRequest<TDecoded> toPut() => KPutRequest<TDecoded>.from(this);
-  KPatchRequest<TDecoded> toPatch() => KPatchRequest<TDecoded>.from(this);
-  KDeleteRequest<TDecoded> toDelete() => KDeleteRequest<TDecoded>.from(this);
-  KDownloadRequest<TDecoded> toDownload({required dynamic savePath}) =>
-      KDownloadRequest<TDecoded>.from(this, savePath: savePath);
-  KRequest<TDecoded> toRequest() => KRequest<TDecoded>.from(this);
+  // /// Do not convert from Other Request types to another Request type unless it's a [KRequest], otherwise you might lose some of the properties that are only available in those specific request types. For example, converting from [KPostRequest] to [KGetRequest] would lose the body of the request, which is not available in [KGetRequest].
+  // KGetUriRequest<TDecoded> toGet() => KGetUriRequest<TDecoded>.from(this);
+  // KPostUriRequest<TDecoded> toPost() => KPostUriRequest<TDecoded>.from(this);
+  // KPutUriRequest<TDecoded> toPut() => KPutUriRequest<TDecoded>.from(this);
+  // KPatchUriRequest<TDecoded> toPatch() => KPatchUriRequest<TDecoded>.from(this);
+  // KDeleteUriRequest<TDecoded> toDelete() => KDeleteUriRequest<TDecoded>.from(this);
+  // KDownloadUriRequest<TDecoded> toDownload({required dynamic savePath}) =>
+  //     KDownloadUriRequest<TDecoded>.from(this, savePath: savePath);
+  // KUriRequest<TDecoded> toUriRequest() => KRequest<TDecoded>.from(this);
 }

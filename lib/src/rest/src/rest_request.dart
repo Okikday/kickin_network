@@ -1,13 +1,16 @@
 // ignore_for_file: public_member_api_docs, sort_constructors_first
-// remember variants
 part of '../rest_api_base.dart';
 
 typedef ErrorOverrideCallback<Raw> = Object? Function(Raw data, Object? error, [StackTrace? st]);
 typedef DecodedCallback<TDecoded> = TDecoded Function(dynamic data, Response _);
 
+/// =================================================
+/// KRestRequest
+/// =================================================
+/// Base class for all path-based request wrappers.
+/// For Uri-based requests, see [KUriRequest] and its subclasses
+/// (e.g. [KGetUriRequest], [KPostUriRequest], …).
 class KRestRequest<TDecoded> {
-  /// Shared request configuration used by every request wrapper in this file.
-  /// Mostly use static values to declare. You can use copyWith from the other kind of requests to make proper changes
   KRestRequest(
     this._api, {
     required this.path,
@@ -28,33 +31,30 @@ class KRestRequest<TDecoded> {
   final String path;
   final bool usePrimary;
 
-  /// It will replace the one in [Options.headers], don't provide if you wish to use the one in the Options
+  /// Replaces [Options.headers]. Omit to keep what's in [options].
   final Map<String, Object?>? headers;
   final Object? data;
   final Options? options;
   final Map<String, dynamic>? queryParams;
   final CancelToken? cancelToken;
   final void Function(int, int)? onReceiveProgress;
-
-  /// You can use it to handle error. If
   final ErrorOverrideCallback? errorOverride;
-
   final LogOptions? logOptions;
 
-  /// Set to true by default. You can set to false if you don't want to append with the baseUrl from the parent [KRestApiBase] and want to provide a full URL in [path] instead.
-  /// Doesn't have any effect if the [KRestApiBase] doesn't have a [baseUrl] configured, in which case the [path] is used as-is regardless of this flag.
+  /// Set to true by default. Set to false to use [path] as a full URL,
+  /// bypassing the parent [KRestApiBase.baseUrl].
+  /// Has no effect when the parent has no baseUrl configured.
   final bool useBaseUrl;
 
   /// Converts the raw Dio response payload into the client-facing output type.
   /// [data] == [Response.data]
   final DecodedCallback<TDecoded>? decoder;
 
-  /// Selects the Dio instance that matches [usePrimary].
   Dio get _dio => usePrimary ? _api._parent._primaryDio : _api._parent._externalDio;
 
   KRestApiBase get _apiBase => _api._parent;
 
-  /// Builds a fallback [RequestOptions] object for error handling and offline decodes.
+  /// Builds a fallback [RequestOptions] for error handling and offline decodes.
   RequestOptions _requestOptionsFor(String method) => RequestOptions(
     path: path,
     headers: headers,
@@ -65,23 +65,29 @@ class KRestRequest<TDecoded> {
     method: method,
   );
 
-  /// For getting the final path after considering [useBaseUrl] and the parent's [baseUrl] joined.
-  late final _transformedPath = (useBaseUrl && _apiBase._baseUrl.isNotEmpty) ? "${_apiBase._baseUrl}$path" : path;
+  late final _transformedPath = (useBaseUrl && _apiBase._baseUrl.isNotEmpty) ? '${_apiBase._baseUrl}$path' : path;
+
   String get transformedPath => _transformedPath;
 
   @internal
   String get method => 'UNKNOWN';
 
   Future<Response<Raw>> _implResponse<Raw>() =>
-      throw "You tried sending the request on base class KRestRequest. Try converting to those that extends it";
+      throw 'You tried sending the request on base class KRestRequest. '
+          'Try converting to those that extend it.';
 
   @override
-  String toString() {
-    return 'KRestRequest(path: $path, usePrimary: $usePrimary, headers: $headers, data: $data, options: $options, queryParams: $queryParams, cancelToken: $cancelToken, onReceiveProgress: $onReceiveProgress, logOptions: $logOptions, useBaseUrl: $useBaseUrl)';
-  }
+  String toString() =>
+      'KRestRequest(path: $path, usePrimary: $usePrimary, headers: $headers, '
+      'data: $data, options: $options, queryParams: $queryParams, '
+      'cancelToken: $cancelToken, onReceiveProgress: $onReceiveProgress, '
+      'logOptions: $logOptions, useBaseUrl: $useBaseUrl)';
 }
 
-/// GET request wrapper with an optional custom operation and response decoder.
+// =================================================
+// GET
+// =================================================
+
 class KGetRequest<TDecoded> extends KRestRequest<TDecoded> {
   KGetRequest(
     super._api, {
@@ -125,7 +131,6 @@ class KGetRequest<TDecoded> extends KRestRequest<TDecoded> {
     onReceiveProgress: onReceiveProgress,
   );
 
-  /// Returns a copy of this request with the supplied overrides.
   KGetRequest<TDecoded> copyWith({
     String? Function(String)? pathTransform,
     bool? usePrimary,
@@ -172,6 +177,10 @@ class KGetRequest<TDecoded> extends KRestRequest<TDecoded> {
   );
 }
 
+// =================================================
+// POST
+// =================================================
+
 class KPostRequest<TDecoded> extends KRestRequest<TDecoded> {
   KPostRequest(
     super._api, {
@@ -186,6 +195,7 @@ class KPostRequest<TDecoded> extends KRestRequest<TDecoded> {
     super.useBaseUrl,
     super.errorOverride,
   });
+
   KPostRequest._(
     super._api, {
     required super.path,
@@ -267,7 +277,10 @@ class KPostRequest<TDecoded> extends KRestRequest<TDecoded> {
   );
 }
 
-/// PUT request wrapper with send-progress support and optional response decoding.
+// =================================================
+// PUT
+// =================================================
+
 class KPutRequest<TDecoded> extends KRestRequest<TDecoded> {
   KPutRequest(
     super._api, {
@@ -282,6 +295,7 @@ class KPutRequest<TDecoded> extends KRestRequest<TDecoded> {
     super.useBaseUrl,
     super.errorOverride,
   });
+
   KPutRequest._(
     super._api, {
     required super.path,
@@ -363,8 +377,25 @@ class KPutRequest<TDecoded> extends KRestRequest<TDecoded> {
   );
 }
 
-/// PATCH request wrapper with send-progress support and optional response decoding.
+// =================================================
+// PATCH
+// =================================================
+
 class KPatchRequest<TDecoded> extends KRestRequest<TDecoded> {
+  KPatchRequest(
+    super._api, {
+    required super.path,
+    super.usePrimary,
+    super.decoder,
+    super.options,
+    super.cancelToken,
+    super.onReceiveProgress,
+    this.onSendProgress,
+    super.logOptions,
+    super.useBaseUrl,
+    super.errorOverride,
+  });
+
   KPatchRequest._(
     super._api, {
     required super.path,
@@ -377,19 +408,6 @@ class KPatchRequest<TDecoded> extends KRestRequest<TDecoded> {
     super.onReceiveProgress,
     this.onSendProgress,
     super.decoder,
-    super.logOptions,
-    super.useBaseUrl,
-    super.errorOverride,
-  });
-  KPatchRequest(
-    super._api, {
-    required super.path,
-    super.usePrimary,
-    super.decoder,
-    super.options,
-    super.cancelToken,
-    super.onReceiveProgress,
-    this.onSendProgress,
     super.logOptions,
     super.useBaseUrl,
     super.errorOverride,
@@ -459,8 +477,24 @@ class KPatchRequest<TDecoded> extends KRestRequest<TDecoded> {
   );
 }
 
-/// DELETE request wrapper with optional response decoding.
+// =================================================
+// DELETE
+// =================================================
+
 class KDeleteRequest<TDecoded> extends KRestRequest<TDecoded> {
+  KDeleteRequest(
+    super._api, {
+    required super.path,
+    super.usePrimary,
+    super.decoder,
+    super.options,
+    super.cancelToken,
+    super.onReceiveProgress,
+    super.logOptions,
+    super.useBaseUrl,
+    super.errorOverride,
+  });
+
   KDeleteRequest._(
     super._api, {
     required super.path,
@@ -477,21 +511,9 @@ class KDeleteRequest<TDecoded> extends KRestRequest<TDecoded> {
     super.errorOverride,
   });
 
-  KDeleteRequest(
-    super._api, {
-    required super.path,
-    super.usePrimary,
-    super.decoder,
-    super.options,
-    super.cancelToken,
-    super.onReceiveProgress,
-    super.logOptions,
-    super.useBaseUrl,
-    super.errorOverride,
-  });
-
   @override
   String get method => 'DELETE';
+
   @override
   Future<Response<Raw>> _implResponse<Raw>() => _dio.delete<Raw>(
     _transformedPath,
@@ -545,6 +567,10 @@ class KDeleteRequest<TDecoded> extends KRestRequest<TDecoded> {
   );
 }
 
+// =================================================
+// DOWNLOAD (path variant)
+// =================================================
+
 class KDownloadRequest<TDecoded> extends KRestRequest<TDecoded> {
   KDownloadRequest(
     super._api, {
@@ -561,6 +587,7 @@ class KDownloadRequest<TDecoded> extends KRestRequest<TDecoded> {
     super.useBaseUrl,
     super.errorOverride,
   });
+
   KDownloadRequest._(
     super._api, {
     required super.path,
@@ -586,7 +613,8 @@ class KDownloadRequest<TDecoded> extends KRestRequest<TDecoded> {
   final bool deleteOnError;
   final String lengthHeader;
 
-  /// Do not add the generic type parameter [Raw] (excluding dynamic) when calling this method, otherwise it will cause a type error.
+  /// Do not add the generic type parameter [Raw] (excluding dynamic) when
+  /// calling this method, otherwise it will cause a type error.
   @override
   Future<Response<Raw>> _implResponse<Raw>() =>
       _dio.download(
@@ -622,7 +650,6 @@ class KDownloadRequest<TDecoded> extends KRestRequest<TDecoded> {
     path: pathTransform?.call(path) ?? path,
     savePath: savePath ?? this.savePath,
     usePrimary: usePrimary ?? this.usePrimary,
-    // options: (options ?? this.options)?.copyWith(headers: headers ?? this.headers),
     options: options ?? this.options,
     queryParams: queryParams ?? this.queryParams,
     cancelToken: cancelToken ?? this.cancelToken,
@@ -654,6 +681,97 @@ class KDownloadRequest<TDecoded> extends KRestRequest<TDecoded> {
     errorOverride: r.errorOverride,
   );
 }
+
+// =================================================
+// HEAD
+// =================================================
+
+class KHeadRequest<TDecoded> extends KRestRequest<TDecoded> {
+  KHeadRequest(
+    super._api, {
+    required super.path,
+    super.usePrimary,
+    super.decoder,
+    super.options,
+    super.cancelToken,
+    super.logOptions,
+    super.useBaseUrl,
+    super.errorOverride,
+  });
+
+  KHeadRequest._(
+    super._api, {
+    required super.path,
+    super.usePrimary,
+    super.headers,
+    super.data,
+    super.decoder,
+    super.options,
+    super.queryParams,
+    super.cancelToken,
+    super.logOptions,
+    super.useBaseUrl,
+    super.errorOverride,
+  });
+
+  @override
+  String get method => 'HEAD';
+
+  @override
+  Future<Response<Raw>> _implResponse<Raw>() => _dio.head<Raw>(
+    _transformedPath,
+    options: options,
+    data: data,
+    queryParameters: queryParams,
+    cancelToken: cancelToken,
+  );
+
+  KHeadRequest<TDecoded> copyWith({
+    String? Function(String)? pathTransform,
+    bool? usePrimary,
+    Map<String, String>? headers,
+    Object? data,
+    Map<String, dynamic>? queryParams,
+    Options? options,
+    CancelToken? cancelToken,
+    LogOptions? logOptions,
+    bool? useBaseUrl,
+    DecodedCallback<TDecoded>? decoder,
+    ErrorOverrideCallback? errorOverride,
+  }) => KHeadRequest<TDecoded>._(
+    _api,
+    path: pathTransform?.call(path) ?? path,
+    usePrimary: usePrimary ?? this.usePrimary,
+    headers: headers ?? this.headers,
+    data: data ?? this.data,
+    queryParams: queryParams ?? this.queryParams,
+    options: (options ?? this.options)?.copyWith(headers: headers ?? this.headers),
+    cancelToken: cancelToken ?? this.cancelToken,
+    decoder: decoder ?? this.decoder,
+    logOptions: logOptions ?? this.logOptions,
+    useBaseUrl: useBaseUrl ?? this.useBaseUrl,
+    errorOverride: errorOverride ?? this.errorOverride,
+  );
+
+  factory KHeadRequest.from(KRestRequest<TDecoded> r) => KHeadRequest<TDecoded>._(
+    r._api,
+    path: r.path,
+    usePrimary: r.usePrimary,
+    headers: r.headers,
+    data: r.data,
+    options: r.options,
+    queryParams: r.queryParams,
+    cancelToken: r.cancelToken,
+    decoder: r.decoder,
+    useBaseUrl: r.useBaseUrl,
+    logOptions: r.logOptions,
+    errorOverride: r.errorOverride,
+  );
+}
+
+// =================================================
+// REQUEST (generic method via options)
+// =================================================
 
 class KRequest<TDecoded> extends KRestRequest<TDecoded> {
   KRequest(
@@ -749,89 +867,9 @@ class KRequest<TDecoded> extends KRestRequest<TDecoded> {
   );
 }
 
-class KHeadRequest<TDecoded> extends KRestRequest<TDecoded> {
-  KHeadRequest(
-    super._api, {
-    required super.path,
-    super.usePrimary,
-    super.decoder,
-    super.options,
-    super.cancelToken,
-    super.logOptions,
-    super.useBaseUrl,
-    super.errorOverride,
-  });
-
-  KHeadRequest._(
-    super._api, {
-    required super.path,
-    super.usePrimary,
-    super.headers,
-    super.data,
-    super.decoder,
-    super.options,
-    super.queryParams,
-    super.cancelToken,
-    super.logOptions,
-    super.useBaseUrl,
-    super.errorOverride,
-  });
-
-  @override
-  String get method => 'HEAD';
-
-  @override
-  Future<Response<Raw>> _implResponse<Raw>() => _dio.head<Raw>(
-    _transformedPath,
-    options: options,
-    data: data,
-    queryParameters: queryParams,
-    cancelToken: cancelToken,
-  );
-
-  KHeadRequest<TDecoded> copyWith({
-    String? Function(String)? pathTransform,
-    bool? usePrimary,
-    Map<String, String>? headers,
-    Object? data,
-    Map<String, dynamic>? queryParams,
-    Options? options,
-    CancelToken? cancelToken,
-    void Function(int, int)? onReceiveProgress,
-    LogOptions? logOptions,
-    bool? useBaseUrl,
-    DecodedCallback<TDecoded>? decoder,
-    ErrorOverrideCallback? errorOverride,
-  }) => KHeadRequest<TDecoded>._(
-    _api,
-    path: pathTransform?.call(path) ?? path,
-    usePrimary: usePrimary ?? this.usePrimary,
-    headers: headers ?? this.headers,
-    data: data ?? this.data,
-    queryParams: queryParams ?? this.queryParams,
-    options: (options ?? this.options)?.copyWith(headers: headers ?? this.headers),
-    cancelToken: cancelToken ?? this.cancelToken,
-    decoder: decoder ?? this.decoder,
-    logOptions: logOptions ?? this.logOptions,
-    useBaseUrl: useBaseUrl ?? this.useBaseUrl,
-    errorOverride: errorOverride ?? this.errorOverride,
-  );
-
-  factory KHeadRequest.from(KRestRequest<TDecoded> r) => KHeadRequest<TDecoded>._(
-    r._api,
-    path: r.path,
-    usePrimary: r.usePrimary,
-    headers: r.headers,
-    data: r.data,
-    options: r.options,
-    queryParams: r.queryParams,
-    cancelToken: r.cancelToken,
-    decoder: r.decoder,
-    useBaseUrl: r.useBaseUrl,
-    logOptions: r.logOptions,
-    errorOverride: r.errorOverride,
-  );
-}
+// =================================================
+// FETCH (RequestOptions passthrough — uri-agnostic)
+// =================================================
 
 class KFetchRequest<TDecoded> extends KRestRequest<TDecoded> {
   KFetchRequest(
@@ -853,7 +891,7 @@ class KFetchRequest<TDecoded> extends KRestRequest<TDecoded> {
   final RequestOptions requestOptions;
 
   @override
-  String get method => "FETCH";
+  String get method => 'FETCH';
 
   @override
   Future<Response<Raw>> _implResponse<Raw>() => _dio.fetch<Raw>(requestOptions);

@@ -43,14 +43,14 @@ class PostsApi extends KRestApi<List<Map<String, dynamic>>> {
       print('[PostsApi] returning ${cache!.length} posts from cache');
       return cache;
     }
-    final result = await _list.trySend();
+    final result = await _list.catchErrorOnSend();
     if (result != null) setCache(result);
     return result;
   }
 
   /// Always fetches a single post by [id] — no caching at this level.
   Future<Map<String, dynamic>?> fetchById(int id) {
-    return _single.copyWith(pathTransform: (path) => '$path/$id').trySend();
+    return _single.copyWith(pathTransform: (path) => '$path/$id').catchErrorOnSend();
   }
 
   /// Invalidates the cached post list.
@@ -73,7 +73,7 @@ class UsersApi extends KRestApi<Map<String, dynamic>> {
 
   Future<Map<String, dynamic>?> fetchMe() async {
     if (cache != null) return cache;
-    final result = await _me.trySend();
+    final result = await _me.catchErrorOnSend();
     if (result != null) setCache(result);
     return result;
   }

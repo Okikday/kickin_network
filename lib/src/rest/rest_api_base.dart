@@ -18,6 +18,8 @@ part 'src/api_monitor_mixin.dart';
 part 'src/api_cache_mixin.dart';
 part 'src/rest_request.dart';
 part 'src/ext_on_rest_request.dart';
+part 'src/rest_uri_request.dart';
+part 'src/ext_on_rest_uri_request.dart';
 
 part 'rest_api.dart';
 
