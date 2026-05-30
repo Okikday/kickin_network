@@ -74,7 +74,7 @@ class ApiResult<Formatted> {
 
   /// v for value
   ApiResult<T> transform<T>(T Function(Formatted v) transformer) =>
-      value != null ? ApiResult<T>(value: transformer(value as Formatted)) : ApiResult<T>(error: error);
+      value != null ? ApiResult<T>(value: transformer(value as Formatted), error: error) : ApiResult<T>(error: error);
 
   ApiResult<Formatted> copyWith({Formatted? value, Object? error}) =>
       ApiResult<Formatted>(value: value ?? this.value, error: error ?? this.error);
