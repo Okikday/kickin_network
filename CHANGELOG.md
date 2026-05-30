@@ -1,3 +1,5 @@
+## 0.0.1-dev.11
+- Correct error handling in ApiResult.transform method
 ## 0.0.1-dev.10
 - Improved code efficiency
 
