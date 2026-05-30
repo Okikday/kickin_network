@@ -1,3 +1,6 @@
+## 0.0.1-dev.10
+- Improved code efficiency
+
 ## 0.0.1-dev.9
 - Added KUriRequest classes
 - Added logging query for response

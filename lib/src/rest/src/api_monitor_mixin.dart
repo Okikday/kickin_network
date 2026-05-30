@@ -1,6 +1,12 @@
 part of '../rest_api_base.dart';
 
-mixin KApiMonitorMixin on KRestApiBase {
+mixin KInternetCheckerMixin on KRestApiBase {
+  // =================================================
+  // Internet connectivity
+  // =================================================
+
+  final internetCheckerStream = InternetConnection().onStatusChange.asBroadcastStream();
+
   final Map<void Function(InternetStatus), StreamSubscription<InternetStatus>> _subscriptions = {};
   StreamSubscription<InternetStatus>? _monitorSubscription;
   bool _isMonitoring = false;

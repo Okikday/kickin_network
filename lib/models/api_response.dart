@@ -73,8 +73,8 @@ class ApiResult<Formatted> {
   bool get isSuccess => value != null && error == null;
 
   /// v for value
-  ApiResult<T> map<T>(T Function(Formatted v) transform) =>
-      value != null ? ApiResult<T>(value: transform(value as Formatted)) : ApiResult<T>(error: error);
+  ApiResult<T> transform<T>(T Function(Formatted v) transformer) =>
+      value != null ? ApiResult<T>(value: transformer(value as Formatted)) : ApiResult<T>(error: error);
 
   ApiResult<Formatted> copyWith({Formatted? value, Object? error}) =>
       ApiResult<Formatted>(value: value ?? this.value, error: error ?? this.error);

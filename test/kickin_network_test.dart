@@ -8,7 +8,7 @@ import 'package:kickin_network/kickin_network.dart';
 // =============================================================================
 
 /// Minimal concrete API root with both mixins applied.
-class _TestApi extends KRestApiBase with KApiCacheMixin, KApiMonitorMixin {
+class _TestApi extends KRestApiBase with KApiCacheMixin, KInternetCheckerMixin {
   _TestApi();
   late final items = _ItemsApi(this);
 }

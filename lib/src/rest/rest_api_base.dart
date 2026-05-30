@@ -54,11 +54,7 @@ const kApiCacheBoxName = "kickin_api_cache";
 abstract class KRestApiBase {
   KRestApiBase();
 
-  // =================================================
-  // Internet connectivity
-  // =================================================
 
-  final internetCheckerStream = InternetConnection().onStatusChange.asBroadcastStream();
 
   // =================================================
   // Internal config

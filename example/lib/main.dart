@@ -9,7 +9,7 @@ import 'package:kickin_network/kickin_network.dart';
 /// Single shared instance for the entire app.
 /// - [KApiCache]    → in-memory cache with optional Hive persistence
 /// - [_ApiMonitor]  → internet connectivity monitoring
-class AppApi extends KRestApiBase with KApiCacheMixin, KApiMonitorMixin {
+class AppApi extends KRestApiBase with KApiCacheMixin, KInternetCheckerMixin {
   AppApi._();
   static final shared = AppApi._();
 
