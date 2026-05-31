@@ -1,3 +1,6 @@
+## 0.0.1-dev.13
+- Improved error handling with KRestApiBase.globalErrorOverride
+
 ## 0.0.1-dev.12
 - Improved default error handling in KRestApiBase.globalErrorOverride
 
