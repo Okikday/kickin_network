@@ -5,9 +5,11 @@ mixin KInternetCheckerMixin on KRestApiBase {
   // Internet connectivity
   // =================================================
 
-  final internetCheckerStream = InternetConnection().onStatusChange.asBroadcastStream();
+  final internetCheckerStream = InternetConnection().onStatusChange
+      .asBroadcastStream();
 
-  final Map<void Function(InternetStatus), StreamSubscription<InternetStatus>> _subscriptions = {};
+  final Map<void Function(InternetStatus), StreamSubscription<InternetStatus>>
+  _subscriptions = {};
   StreamSubscription<InternetStatus>? _monitorSubscription;
   bool _isMonitoring = false;
 
@@ -42,7 +44,7 @@ mixin KInternetCheckerMixin on KRestApiBase {
     // Internal monitor subscription for any base-class logging / callbacks
     _monitorSubscription ??= internetCheckerStream.listen((status) {
       if (_enabledMonitoring) {
-        log('[ApiMonitor] Internet status: $status', name: runtimeType.toString());
+        log('Internet status: $status', name: runtimeType.toString());
       }
     });
   }

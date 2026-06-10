@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:collection';
 import 'dart:convert';
 import 'dart:developer';
+import 'dart:io';
 
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
@@ -127,13 +128,15 @@ abstract class KRestApiBase {
   BaseOptions get primaryOptions => _primaryDio.options;
   set primaryOptions(BaseOptions options) => _primaryDio.options = options;
   Transformer get primaryTransformer => _primaryDio.transformer;
-  set primaryTransformer(Transformer transformer) => _primaryDio.transformer = transformer;
+  set primaryTransformer(Transformer transformer) =>
+      _primaryDio.transformer = transformer;
 
   Interceptors get externalInterceptors => _externalDio.interceptors;
   BaseOptions get externalOptions => _externalDio.options;
   set externalOptions(BaseOptions options) => _externalDio.options = options;
   Transformer get externalTransformer => _externalDio.transformer;
-  set externalTransformer(Transformer transformer) => _externalDio.transformer = transformer;
+  set externalTransformer(Transformer transformer) =>
+      _externalDio.transformer = transformer;
 
   Dio primaryClone({
     BaseOptions? options,
@@ -163,18 +166,27 @@ abstract class KRestApiBase {
       defaultErrorOverride(_logOptions, data, error, st);
 }
 
-Object? defaultErrorOverride(LogOptions logOptions, dynamic data, Object? error, [StackTrace? st]) {
+Object? defaultErrorOverride(
+  LogOptions logOptions,
+  dynamic data,
+  Object? error, [
+  StackTrace? st,
+]) {
   if (data != null) {
     if (data is Map && data.containsKey("error")) return data["error"];
     return null;
   }
   String? errorStr;
-  if (error is DioException) {
-    errorStr = switch (error.type) {
-      DioExceptionType.connectionTimeout => 'Connection timed out. Please check your internet and try again.',
-      DioExceptionType.sendTimeout => 'Request took too long to send. Please try again.',
-      DioExceptionType.receiveTimeout => 'Server took too long to respond. Please try again.',
-      DioExceptionType.badCertificate => 'Secure connection failed. Please update the app or contact support.',
+  errorStr = switch (error) {
+    DioException d => switch (d.type) {
+      DioExceptionType.connectionTimeout =>
+        'Connection timed out. Please check your internet and try again.',
+      DioExceptionType.sendTimeout =>
+        'Request took too long to send. Please try again.',
+      DioExceptionType.receiveTimeout =>
+        'Server took too long to respond. Please try again.',
+      DioExceptionType.badCertificate =>
+        'Secure connection failed. Please update the app or contact support.',
       DioExceptionType.badResponse => switch (error.response?.statusCode) {
         400 => 'Bad request. Please check your input.',
         401 => 'Session expired. Please sign in again or refresh.',
@@ -188,15 +200,28 @@ Object? defaultErrorOverride(LogOptions logOptions, dynamic data, Object? error,
         502 => 'Server is temporarily unavailable. Please try again.',
         503 => 'Service is down for maintenance. Please try again later.',
         504 => 'Server gateway timed out. Please try again.',
-        _ => 'Unexpected error (${error.response?.statusCode}). Please try again.',
+        _ =>
+          'Unexpected error (${error.response?.statusCode}). Please try again.',
       },
       DioExceptionType.cancel => 'Request was cancelled.',
-      DioExceptionType.connectionError => 'No internet connection. Please check your network.',
-      DioExceptionType.unknown => 'An unexpected error occurred. Please try again.',
-    };
+      DioExceptionType.connectionError =>
+        'No internet connection. Please check your network.',
+      DioExceptionType.unknown =>
+        'An unexpected error occurred. Please try again.',
+    },
+    CertificateException c => c.message,
+    HandshakeException h => h.message,
+    _ => null,
+  };
+  if (logOptions.logAllError) {
+    log(
+      "${errorStr ?? error}",
+      error: error,
+      stackTrace: st,
+      name: "KRestApiBase.globalErrorOverride",
+      level: 1000,
+    );
   }
-  if (logOptions.parts.contains(LogPart.errors) || logOptions.parts.isEmpty) {
-    log("${errorStr ?? error}", error: error, stackTrace: st, name: "KRestApiBase.globalErrorOverride", level: 1000);
-  }
-  return errorStr ?? "Error: Override Global error in [KRestApiBase] for more info";
+  return errorStr ??
+      "Error: Override Global error in [KRestApiBase] for more info";
 }
