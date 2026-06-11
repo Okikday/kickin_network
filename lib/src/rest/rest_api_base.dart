@@ -163,41 +163,35 @@ abstract class KRestApiBase {
     httpClientAdapter: httpClientAdapter,
     transformer: transformer,
   );
+}
 
+extension KRestApiBaseErrorHandlerExtension on KRestApiBase {
   Object? globalErrorOverride(
-    Response<dynamic> data,
-    Object? error, [
-    StackTrace? st,
-    Object? Function(Response<dynamic> data, Object? error, StackTrace? st)?
-    handleRawError,
-  ]) => defaultErrorOverride(_logOptions, data, error, st, handleRawError);
-
-  @mustCallSuper
-  Object? defaultErrorOverride(
-    LogOptions logOptions,
     Response<dynamic> response,
     Object? error, [
     StackTrace? st,
     Object? Function(Response<dynamic> data, Object? error, StackTrace? st)?
     handleRawError,
+  ]) => defaultErrorOverride(_logOptions, response, error, st, handleRawError);
+
+  Object? defaultErrorOverride(
+    LogOptions logOptions,
+    Response<dynamic> response,
+    Object? error, [
+    StackTrace? st,
+    Object? Function(Response<dynamic> response, Object? error, StackTrace? st)?
+    handleRawError,
   ]) {
     if (handleRawError != null) return handleRawError(response, error, st);
     String? errorStr;
-    errorStr = switch (response.data) {
-      Map m => m["error"] ?? m["data"]["error"],
-      String s => () {
-        try {
-          final decoded = jsonDecode(s) as Map;
-          return decoded["data"]["error"] ?? decoded["error"];
-        } catch (e) {
-          return null;
-        }
-      }(),
-      _ => null,
-    };
-    if (errorStr != null) {
-      _shouldLogError(logOptions, error, errorStr, st);
-      return errorStr;
+    final data =
+        response.data ?? (error is DioException ? error.response?.data : null);
+    if (data != null) {
+      errorStr = resolveErrorStr(response.data);
+      if (errorStr != null) {
+        shouldLogError(logOptions, error, errorStr, st);
+        return errorStr;
+      }
     }
 
     errorStr = switch (error) {
@@ -240,26 +234,39 @@ abstract class KRestApiBase {
       _ => null,
     };
 
-    _shouldLogError(logOptions, error, errorStr, st);
+    shouldLogError(logOptions, error, errorStr, st);
 
     return errorStr ??
         "Error: Override Global error in [KRestApiBase] for more info";
   }
-}
 
-void _shouldLogError(
-  LogOptions logOptions,
-  Object? error,
-  String? errorStr,
-  StackTrace? st,
-) {
-  if (logOptions.logAllError) {
-    log(
-      "${errorStr ?? error}",
-      error: error,
-      stackTrace: st,
-      name: "KRestApiBase.globalErrorOverride",
-      level: 1000,
-    );
+  String? resolveErrorStr(dynamic data) => switch (data) {
+    Map m => m["error"] ?? m["data"]["error"],
+    String s => () {
+      try {
+        final decoded = jsonDecode(s) as Map;
+        return decoded["data"]["error"] ?? decoded["error"];
+      } catch (e) {
+        return null;
+      }
+    }(),
+    _ => null,
+  };
+
+  void shouldLogError(
+    LogOptions logOptions,
+    Object? error,
+    String? errorStr,
+    StackTrace? st,
+  ) {
+    if (logOptions.logAllError) {
+      log(
+        "${errorStr ?? error}",
+        error: error,
+        stackTrace: st,
+        name: "KRestApiBase.globalErrorOverride",
+        level: 1000,
+      );
+    }
   }
 }

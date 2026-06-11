@@ -1,3 +1,6 @@
+## 0.0.1-dev.18
+- Fixed error where globalErrorOverride still throws even when server returns an error
+
 ## 0.0.1-dev.17
 - Fixed critical mistake where we assumed [message] to be a substitute for [error] in the globalErrorOverride
 
