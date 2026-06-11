@@ -124,6 +124,8 @@ abstract class KRestApiBase {
   /// primary client.
   void setExternalDio(Dio dio) => _eDio = dio;
 
+  String get baseUrl => _baseUrl;
+
   Interceptors get primaryInterceptors => _primaryDio.interceptors;
   BaseOptions get primaryOptions => _primaryDio.options;
   set primaryOptions(BaseOptions options) => _primaryDio.options = options;
@@ -171,10 +173,23 @@ Object? defaultErrorOverride(
   dynamic data,
   Object? error, [
   StackTrace? st,
+  Object? Function(dynamic data, Object? error, StackTrace? st)? handleRawError,
 ]) {
+  if (handleRawError != null) return handleRawError(data, error, st);
   if (data != null) {
-    if (data is Map && data.containsKey("error")) return data["error"];
-    return null;
+    final autoHandleError = switch (data) {
+      Map m => m["data"]["error"] ?? m["error"],
+      String s => () {
+        try {
+          final decoded = jsonDecode(s) as Map;
+          return decoded["data"]["error"] ?? decoded["error"];
+        } catch (e) {
+          return null;
+        }
+      }(),
+      _ => null,
+    };
+    if (autoHandleError != null) return autoHandleError;
   }
   String? errorStr;
   errorStr = switch (error) {
