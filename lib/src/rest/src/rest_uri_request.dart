@@ -26,13 +26,13 @@ abstract class KUriRequest<TDecoded> {
     this.headers,
     this.data,
     Options? options,
-    this.queryParams,
     this.cancelToken,
     this.onReceiveProgress,
     this.decoder,
     this.logOptions,
     this.errorOverride,
-  }) : options = options?.copyWith(headers: headers) ?? Options(headers: headers);
+  }) : options =
+           options?.copyWith(headers: headers) ?? Options(headers: headers);
 
   final KRestApi _api;
   final Uri uri;
@@ -42,23 +42,23 @@ abstract class KUriRequest<TDecoded> {
   final Map<String, Object?>? headers;
   final Object? data;
   final Options? options;
-  final Map<String, dynamic>? queryParams;
   final CancelToken? cancelToken;
   final void Function(int, int)? onReceiveProgress;
   final ErrorOverrideCallback? errorOverride;
   final LogOptions? logOptions;
   final DecodedCallback<TDecoded>? decoder;
 
-  Dio get _dio => usePrimary ? _api._parent._primaryDio : _api._parent._externalDio;
+  Dio get _dio =>
+      usePrimary ? _api._parent._primaryDio : _api._parent._externalDio;
 
   KRestApiBase get _apiBase => _api._parent;
 
   /// Builds a fallback [RequestOptions] for error handling.
   RequestOptions _requestOptionsFor(String method) => RequestOptions(
-    path: uri.toString(),
+    path: uri.path,
     headers: headers,
     data: data,
-    queryParameters: queryParams,
+    queryParameters: uri.queryParameters,
     cancelToken: cancelToken,
     onReceiveProgress: onReceiveProgress,
     method: method,
@@ -72,7 +72,7 @@ abstract class KUriRequest<TDecoded> {
   @override
   String toString() =>
       '$runtimeType(uri: $uri, usePrimary: $usePrimary, headers: $headers, '
-      'data: $data, options: $options, queryParams: $queryParams, '
+      'data: $data, options: $options, queryParams: ${uri.queryParameters}, '
       'cancelToken: $cancelToken, logOptions: $logOptions)';
 }
 
@@ -100,7 +100,7 @@ class KGetUriRequest<TDecoded> extends KUriRequest<TDecoded> {
     super.headers,
     super.data,
     super.options,
-    super.queryParams,
+
     super.cancelToken,
     super.onReceiveProgress,
     super.decoder,
@@ -112,15 +112,18 @@ class KGetUriRequest<TDecoded> extends KUriRequest<TDecoded> {
   String get method => 'GET';
 
   @override
-  Future<Response<Raw>> _implResponse<Raw>() =>
-      _dio.getUri<Raw>(uri, options: options, cancelToken: cancelToken, onReceiveProgress: onReceiveProgress);
+  Future<Response<Raw>> _implResponse<Raw>() => _dio.getUri<Raw>(
+    uri,
+    options: options,
+    cancelToken: cancelToken,
+    onReceiveProgress: onReceiveProgress,
+  );
 
   KGetUriRequest<TDecoded> copyWith({
     Uri? uri,
     bool? usePrimary,
     Map<String, String>? headers,
     Object? data,
-    Map<String, dynamic>? queryParams,
     Options? options,
     CancelToken? cancelToken,
     void Function(int, int)? onReceiveProgress,
@@ -133,8 +136,9 @@ class KGetUriRequest<TDecoded> extends KUriRequest<TDecoded> {
     usePrimary: usePrimary ?? this.usePrimary,
     headers: headers ?? this.headers,
     data: data ?? this.data,
-    queryParams: queryParams ?? this.queryParams,
-    options: (options ?? this.options)?.copyWith(headers: headers ?? this.headers),
+    options: (options ?? this.options)?.copyWith(
+      headers: headers ?? this.headers,
+    ),
     cancelToken: cancelToken ?? this.cancelToken,
     onReceiveProgress: onReceiveProgress ?? this.onReceiveProgress,
     decoder: decoder ?? this.decoder,
@@ -168,7 +172,7 @@ class KPostUriRequest<TDecoded> extends KUriRequest<TDecoded> {
     super.headers,
     super.data,
     super.options,
-    super.queryParams,
+
     super.cancelToken,
     super.onReceiveProgress,
     this.onSendProgress,
@@ -199,7 +203,7 @@ class KPostUriRequest<TDecoded> extends KUriRequest<TDecoded> {
     Object? data,
     Options? options,
     CancelToken? cancelToken,
-    Map<String, dynamic>? queryParams,
+
     void Function(int, int)? onSendProgress,
     void Function(int, int)? onReceiveProgress,
     LogOptions? logOptions,
@@ -211,9 +215,11 @@ class KPostUriRequest<TDecoded> extends KUriRequest<TDecoded> {
     usePrimary: usePrimary ?? this.usePrimary,
     headers: headers ?? this.headers,
     data: data ?? this.data,
-    options: (options ?? this.options)?.copyWith(headers: headers ?? this.headers),
+    options: (options ?? this.options)?.copyWith(
+      headers: headers ?? this.headers,
+    ),
     cancelToken: cancelToken ?? this.cancelToken,
-    queryParams: queryParams ?? this.queryParams,
+
     onSendProgress: onSendProgress ?? this.onSendProgress,
     onReceiveProgress: onReceiveProgress ?? this.onReceiveProgress,
     decoder: decoder ?? this.decoder,
@@ -247,7 +253,7 @@ class KPutUriRequest<TDecoded> extends KUriRequest<TDecoded> {
     super.headers,
     super.data,
     super.options,
-    super.queryParams,
+
     super.cancelToken,
     super.onReceiveProgress,
     this.onSendProgress,
@@ -278,7 +284,7 @@ class KPutUriRequest<TDecoded> extends KUriRequest<TDecoded> {
     Object? data,
     Options? options,
     CancelToken? cancelToken,
-    Map<String, dynamic>? queryParams,
+
     void Function(int, int)? onSendProgress,
     void Function(int, int)? onReceiveProgress,
     LogOptions? logOptions,
@@ -290,9 +296,11 @@ class KPutUriRequest<TDecoded> extends KUriRequest<TDecoded> {
     usePrimary: usePrimary ?? this.usePrimary,
     headers: headers ?? this.headers,
     data: data ?? this.data,
-    options: (options ?? this.options)?.copyWith(headers: headers ?? this.headers),
+    options: (options ?? this.options)?.copyWith(
+      headers: headers ?? this.headers,
+    ),
     cancelToken: cancelToken ?? this.cancelToken,
-    queryParams: queryParams ?? this.queryParams,
+
     onSendProgress: onSendProgress ?? this.onSendProgress,
     onReceiveProgress: onReceiveProgress ?? this.onReceiveProgress,
     decoder: decoder ?? this.decoder,
@@ -326,7 +334,7 @@ class KPatchUriRequest<TDecoded> extends KUriRequest<TDecoded> {
     super.headers,
     super.data,
     super.options,
-    super.queryParams,
+
     super.cancelToken,
     super.onReceiveProgress,
     this.onSendProgress,
@@ -357,7 +365,7 @@ class KPatchUriRequest<TDecoded> extends KUriRequest<TDecoded> {
     Object? data,
     Options? options,
     CancelToken? cancelToken,
-    Map<String, dynamic>? queryParams,
+
     void Function(int, int)? onSendProgress,
     void Function(int, int)? onReceiveProgress,
     LogOptions? logOptions,
@@ -369,9 +377,11 @@ class KPatchUriRequest<TDecoded> extends KUriRequest<TDecoded> {
     usePrimary: usePrimary ?? this.usePrimary,
     headers: headers ?? this.headers,
     data: data ?? this.data,
-    options: (options ?? this.options)?.copyWith(headers: headers ?? this.headers),
+    options: (options ?? this.options)?.copyWith(
+      headers: headers ?? this.headers,
+    ),
     cancelToken: cancelToken ?? this.cancelToken,
-    queryParams: queryParams ?? this.queryParams,
+
     onSendProgress: onSendProgress ?? this.onSendProgress,
     onReceiveProgress: onReceiveProgress ?? this.onReceiveProgress,
     decoder: decoder ?? this.decoder,
@@ -404,7 +414,7 @@ class KDeleteUriRequest<TDecoded> extends KUriRequest<TDecoded> {
     super.headers,
     super.data,
     super.options,
-    super.queryParams,
+
     super.cancelToken,
     super.onReceiveProgress,
     super.decoder,
@@ -416,8 +426,12 @@ class KDeleteUriRequest<TDecoded> extends KUriRequest<TDecoded> {
   String get method => 'DELETE';
 
   @override
-  Future<Response<Raw>> _implResponse<Raw>() =>
-      _dio.deleteUri<Raw>(uri, options: options, data: data, cancelToken: cancelToken);
+  Future<Response<Raw>> _implResponse<Raw>() => _dio.deleteUri<Raw>(
+    uri,
+    options: options,
+    data: data,
+    cancelToken: cancelToken,
+  );
 
   KDeleteUriRequest<TDecoded> copyWith({
     Uri? uri,
@@ -426,7 +440,7 @@ class KDeleteUriRequest<TDecoded> extends KUriRequest<TDecoded> {
     Object? data,
     Options? options,
     CancelToken? cancelToken,
-    Map<String, dynamic>? queryParams,
+
     LogOptions? logOptions,
     DecodedCallback<TDecoded>? decoder,
     ErrorOverrideCallback? errorOverride,
@@ -436,9 +450,11 @@ class KDeleteUriRequest<TDecoded> extends KUriRequest<TDecoded> {
     usePrimary: usePrimary ?? this.usePrimary,
     headers: headers ?? this.headers,
     data: data ?? this.data,
-    options: (options ?? this.options)?.copyWith(headers: headers ?? this.headers),
+    options: (options ?? this.options)?.copyWith(
+      headers: headers ?? this.headers,
+    ),
     cancelToken: cancelToken ?? this.cancelToken,
-    queryParams: queryParams ?? this.queryParams,
+
     decoder: decoder ?? this.decoder,
     logOptions: logOptions ?? this.logOptions,
     errorOverride: errorOverride ?? this.errorOverride,
@@ -468,7 +484,7 @@ class KHeadUriRequest<TDecoded> extends KUriRequest<TDecoded> {
     super.headers,
     super.data,
     super.options,
-    super.queryParams,
+
     super.cancelToken,
     super.decoder,
     super.logOptions,
@@ -479,15 +495,19 @@ class KHeadUriRequest<TDecoded> extends KUriRequest<TDecoded> {
   String get method => 'HEAD';
 
   @override
-  Future<Response<Raw>> _implResponse<Raw>() =>
-      _dio.headUri<Raw>(uri, options: options, data: data, cancelToken: cancelToken);
+  Future<Response<Raw>> _implResponse<Raw>() => _dio.headUri<Raw>(
+    uri,
+    options: options,
+    data: data,
+    cancelToken: cancelToken,
+  );
 
   KHeadUriRequest<TDecoded> copyWith({
     Uri? uri,
     bool? usePrimary,
     Map<String, String>? headers,
     Object? data,
-    Map<String, dynamic>? queryParams,
+
     Options? options,
     CancelToken? cancelToken,
     LogOptions? logOptions,
@@ -499,8 +519,10 @@ class KHeadUriRequest<TDecoded> extends KUriRequest<TDecoded> {
     usePrimary: usePrimary ?? this.usePrimary,
     headers: headers ?? this.headers,
     data: data ?? this.data,
-    queryParams: queryParams ?? this.queryParams,
-    options: (options ?? this.options)?.copyWith(headers: headers ?? this.headers),
+
+    options: (options ?? this.options)?.copyWith(
+      headers: headers ?? this.headers,
+    ),
     cancelToken: cancelToken ?? this.cancelToken,
     decoder: decoder ?? this.decoder,
     logOptions: logOptions ?? this.logOptions,
@@ -533,7 +555,7 @@ class KRequestUri<TDecoded> extends KUriRequest<TDecoded> {
     super.headers,
     super.data,
     super.options,
-    super.queryParams,
+
     super.cancelToken,
     super.onReceiveProgress,
     this.onSendProgress,
@@ -562,7 +584,7 @@ class KRequestUri<TDecoded> extends KUriRequest<TDecoded> {
     bool? usePrimary,
     Map<String, String>? headers,
     Object? data,
-    Map<String, dynamic>? queryParams,
+
     Options? options,
     CancelToken? cancelToken,
     void Function(int, int)? onSendProgress,
@@ -576,8 +598,10 @@ class KRequestUri<TDecoded> extends KUriRequest<TDecoded> {
     usePrimary: usePrimary ?? this.usePrimary,
     headers: headers ?? this.headers,
     data: data ?? this.data,
-    queryParams: queryParams ?? this.queryParams,
-    options: (options ?? this.options)?.copyWith(headers: headers ?? this.headers),
+
+    options: (options ?? this.options)?.copyWith(
+      headers: headers ?? this.headers,
+    ),
     cancelToken: cancelToken ?? this.cancelToken,
     onSendProgress: onSendProgress ?? this.onSendProgress,
     onReceiveProgress: onReceiveProgress ?? this.onReceiveProgress,
@@ -613,7 +637,7 @@ class KDownloadUriRequest<TDecoded> extends KUriRequest<TDecoded> {
     required this.savePath,
     super.usePrimary,
     super.options,
-    super.queryParams,
+
     super.cancelToken,
     super.onReceiveProgress,
     this.fileAccessMode = FileAccessMode.write,
@@ -653,7 +677,7 @@ class KDownloadUriRequest<TDecoded> extends KUriRequest<TDecoded> {
     bool? usePrimary,
     dynamic savePath,
     Options? options,
-    Map<String, dynamic>? queryParams,
+
     CancelToken? cancelToken,
     void Function(int, int)? onReceiveProgress,
     bool? deleteOnError,
@@ -667,7 +691,7 @@ class KDownloadUriRequest<TDecoded> extends KUriRequest<TDecoded> {
     savePath: savePath ?? this.savePath,
     usePrimary: usePrimary ?? this.usePrimary,
     options: options ?? this.options,
-    queryParams: queryParams ?? this.queryParams,
+
     cancelToken: cancelToken ?? this.cancelToken,
     onReceiveProgress: onReceiveProgress ?? this.onReceiveProgress,
     deleteOnError: deleteOnError ?? this.deleteOnError,

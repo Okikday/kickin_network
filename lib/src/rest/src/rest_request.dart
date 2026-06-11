@@ -1,7 +1,8 @@
 // ignore_for_file: public_member_api_docs, sort_constructors_first
 part of '../rest_api_base.dart';
 
-typedef ErrorOverrideCallback<Raw> = Object? Function(Raw data, Object? error, [StackTrace? st]);
+typedef ErrorOverrideCallback<Raw> =
+    Object? Function(Response<Raw> data, Object? error, [StackTrace? st]);
 typedef DecodedCallback<TDecoded> = TDecoded Function(dynamic data, Response _);
 
 /// =================================================
@@ -25,7 +26,8 @@ class KRestRequest<TDecoded> {
     this.logOptions,
     this.useBaseUrl = true,
     this.errorOverride,
-  }) : options = options?.copyWith(headers: headers) ?? Options(headers: headers);
+  }) : options =
+           options?.copyWith(headers: headers) ?? Options(headers: headers);
 
   final KRestApi _api;
   final String path;
@@ -50,7 +52,8 @@ class KRestRequest<TDecoded> {
   /// [data] == [Response.data]
   final DecodedCallback<TDecoded>? decoder;
 
-  Dio get _dio => usePrimary ? _api._parent._primaryDio : _api._parent._externalDio;
+  Dio get _dio =>
+      usePrimary ? _api._parent._primaryDio : _api._parent._externalDio;
 
   KRestApiBase get _apiBase => _api._parent;
 
@@ -63,9 +66,27 @@ class KRestRequest<TDecoded> {
     cancelToken: cancelToken,
     onReceiveProgress: onReceiveProgress,
     method: method,
+    sendTimeout: options?.sendTimeout,
+    receiveTimeout: options?.receiveTimeout,
+    connectTimeout: options?.connectTimeout,
+    extra: options?.extra,
+    baseUrl: _api._parent._baseUrl,
+    responseType: options?.responseType,
+    preserveHeaderCase: options?.preserveHeaderCase,
+    contentType: options?.contentType,
+    validateStatus: options?.validateStatus,
+    receiveDataWhenStatusError: options?.receiveDataWhenStatusError,
+    followRedirects: options?.followRedirects,
+    maxRedirects: options?.maxRedirects,
+    requestEncoder: options?.requestEncoder,
+    responseDecoder: options?.responseDecoder,
+    listFormat: options?.listFormat,
+    sourceStackTrace: StackTrace.current,
   );
 
-  late final _transformedPath = (useBaseUrl && _apiBase._baseUrl.isNotEmpty) ? '${_apiBase._baseUrl}$path' : path;
+  late final _transformedPath = (useBaseUrl && _apiBase._baseUrl.isNotEmpty)
+      ? '${_apiBase._baseUrl}$path'
+      : path;
 
   String get transformedPath => _transformedPath;
 
@@ -151,7 +172,9 @@ class KGetRequest<TDecoded> extends KRestRequest<TDecoded> {
     headers: headers ?? this.headers,
     data: data ?? this.data,
     queryParams: queryParams ?? this.queryParams,
-    options: (options ?? this.options)?.copyWith(headers: headers ?? this.headers),
+    options: (options ?? this.options)?.copyWith(
+      headers: headers ?? this.headers,
+    ),
     cancelToken: cancelToken ?? this.cancelToken,
     onReceiveProgress: onReceiveProgress ?? this.onReceiveProgress,
     decoder: decoder ?? this.decoder,
@@ -249,7 +272,9 @@ class KPostRequest<TDecoded> extends KRestRequest<TDecoded> {
     usePrimary: usePrimary ?? this.usePrimary,
     headers: headers ?? this.headers,
     data: data ?? this.data,
-    options: (options ?? this.options)?.copyWith(headers: headers ?? this.headers),
+    options: (options ?? this.options)?.copyWith(
+      headers: headers ?? this.headers,
+    ),
     cancelToken: cancelToken ?? this.cancelToken,
     queryParams: queryParams ?? this.queryParams,
     onSendProgress: onSendProgress ?? this.onSendProgress,
@@ -260,21 +285,22 @@ class KPostRequest<TDecoded> extends KRestRequest<TDecoded> {
     errorOverride: errorOverride ?? this.errorOverride,
   );
 
-  factory KPostRequest.from(KRestRequest<TDecoded> r) => KPostRequest<TDecoded>._(
-    r._api,
-    path: r.path,
-    usePrimary: r.usePrimary,
-    headers: r.headers,
-    data: r.data,
-    options: r.options,
-    queryParams: r.queryParams,
-    cancelToken: r.cancelToken,
-    onReceiveProgress: r.onReceiveProgress,
-    decoder: r.decoder,
-    useBaseUrl: r.useBaseUrl,
-    logOptions: r.logOptions,
-    errorOverride: r.errorOverride,
-  );
+  factory KPostRequest.from(KRestRequest<TDecoded> r) =>
+      KPostRequest<TDecoded>._(
+        r._api,
+        path: r.path,
+        usePrimary: r.usePrimary,
+        headers: r.headers,
+        data: r.data,
+        options: r.options,
+        queryParams: r.queryParams,
+        cancelToken: r.cancelToken,
+        onReceiveProgress: r.onReceiveProgress,
+        decoder: r.decoder,
+        useBaseUrl: r.useBaseUrl,
+        logOptions: r.logOptions,
+        errorOverride: r.errorOverride,
+      );
 }
 
 // =================================================
@@ -349,7 +375,9 @@ class KPutRequest<TDecoded> extends KRestRequest<TDecoded> {
     usePrimary: usePrimary ?? this.usePrimary,
     headers: headers ?? this.headers,
     data: data ?? this.data,
-    options: (options ?? this.options)?.copyWith(headers: headers ?? this.headers),
+    options: (options ?? this.options)?.copyWith(
+      headers: headers ?? this.headers,
+    ),
     cancelToken: cancelToken ?? this.cancelToken,
     queryParams: queryParams ?? this.queryParams,
     onSendProgress: onSendProgress ?? this.onSendProgress,
@@ -449,7 +477,9 @@ class KPatchRequest<TDecoded> extends KRestRequest<TDecoded> {
     usePrimary: usePrimary ?? this.usePrimary,
     headers: headers ?? this.headers,
     data: data ?? this.data,
-    options: (options ?? this.options)?.copyWith(headers: headers ?? this.headers),
+    options: (options ?? this.options)?.copyWith(
+      headers: headers ?? this.headers,
+    ),
     cancelToken: cancelToken ?? this.cancelToken,
     queryParams: queryParams ?? this.queryParams,
     onSendProgress: onSendProgress ?? this.onSendProgress,
@@ -460,21 +490,22 @@ class KPatchRequest<TDecoded> extends KRestRequest<TDecoded> {
     errorOverride: errorOverride ?? this.errorOverride,
   );
 
-  factory KPatchRequest.from(KRestRequest<TDecoded> r) => KPatchRequest<TDecoded>._(
-    r._api,
-    path: r.path,
-    usePrimary: r.usePrimary,
-    headers: r.headers,
-    data: r.data,
-    options: r.options,
-    queryParams: r.queryParams,
-    cancelToken: r.cancelToken,
-    onReceiveProgress: r.onReceiveProgress,
-    decoder: r.decoder,
-    useBaseUrl: r.useBaseUrl,
-    logOptions: r.logOptions,
-    errorOverride: r.errorOverride,
-  );
+  factory KPatchRequest.from(KRestRequest<TDecoded> r) =>
+      KPatchRequest<TDecoded>._(
+        r._api,
+        path: r.path,
+        usePrimary: r.usePrimary,
+        headers: r.headers,
+        data: r.data,
+        options: r.options,
+        queryParams: r.queryParams,
+        cancelToken: r.cancelToken,
+        onReceiveProgress: r.onReceiveProgress,
+        decoder: r.decoder,
+        useBaseUrl: r.useBaseUrl,
+        logOptions: r.logOptions,
+        errorOverride: r.errorOverride,
+      );
 }
 
 // =================================================
@@ -541,7 +572,9 @@ class KDeleteRequest<TDecoded> extends KRestRequest<TDecoded> {
     usePrimary: usePrimary ?? this.usePrimary,
     headers: headers ?? this.headers,
     data: data ?? this.data,
-    options: (options ?? this.options)?.copyWith(headers: headers ?? this.headers),
+    options: (options ?? this.options)?.copyWith(
+      headers: headers ?? this.headers,
+    ),
     cancelToken: cancelToken ?? this.cancelToken,
     queryParams: queryParams ?? this.queryParams,
     decoder: decoder ?? this.decoder,
@@ -550,21 +583,22 @@ class KDeleteRequest<TDecoded> extends KRestRequest<TDecoded> {
     errorOverride: errorOverride ?? this.errorOverride,
   );
 
-  factory KDeleteRequest.from(KRestRequest<TDecoded> r) => KDeleteRequest<TDecoded>._(
-    r._api,
-    path: r.path,
-    usePrimary: r.usePrimary,
-    headers: r.headers,
-    data: r.data,
-    options: r.options,
-    queryParams: r.queryParams,
-    cancelToken: r.cancelToken,
-    onReceiveProgress: r.onReceiveProgress,
-    decoder: r.decoder,
-    useBaseUrl: r.useBaseUrl,
-    logOptions: r.logOptions,
-    errorOverride: r.errorOverride,
-  );
+  factory KDeleteRequest.from(KRestRequest<TDecoded> r) =>
+      KDeleteRequest<TDecoded>._(
+        r._api,
+        path: r.path,
+        usePrimary: r.usePrimary,
+        headers: r.headers,
+        data: r.data,
+        options: r.options,
+        queryParams: r.queryParams,
+        cancelToken: r.cancelToken,
+        onReceiveProgress: r.onReceiveProgress,
+        decoder: r.decoder,
+        useBaseUrl: r.useBaseUrl,
+        logOptions: r.logOptions,
+        errorOverride: r.errorOverride,
+      );
 }
 
 // =================================================
@@ -745,7 +779,9 @@ class KHeadRequest<TDecoded> extends KRestRequest<TDecoded> {
     headers: headers ?? this.headers,
     data: data ?? this.data,
     queryParams: queryParams ?? this.queryParams,
-    options: (options ?? this.options)?.copyWith(headers: headers ?? this.headers),
+    options: (options ?? this.options)?.copyWith(
+      headers: headers ?? this.headers,
+    ),
     cancelToken: cancelToken ?? this.cancelToken,
     decoder: decoder ?? this.decoder,
     logOptions: logOptions ?? this.logOptions,
@@ -753,20 +789,21 @@ class KHeadRequest<TDecoded> extends KRestRequest<TDecoded> {
     errorOverride: errorOverride ?? this.errorOverride,
   );
 
-  factory KHeadRequest.from(KRestRequest<TDecoded> r) => KHeadRequest<TDecoded>._(
-    r._api,
-    path: r.path,
-    usePrimary: r.usePrimary,
-    headers: r.headers,
-    data: r.data,
-    options: r.options,
-    queryParams: r.queryParams,
-    cancelToken: r.cancelToken,
-    decoder: r.decoder,
-    useBaseUrl: r.useBaseUrl,
-    logOptions: r.logOptions,
-    errorOverride: r.errorOverride,
-  );
+  factory KHeadRequest.from(KRestRequest<TDecoded> r) =>
+      KHeadRequest<TDecoded>._(
+        r._api,
+        path: r.path,
+        usePrimary: r.usePrimary,
+        headers: r.headers,
+        data: r.data,
+        options: r.options,
+        queryParams: r.queryParams,
+        cancelToken: r.cancelToken,
+        decoder: r.decoder,
+        useBaseUrl: r.useBaseUrl,
+        logOptions: r.logOptions,
+        errorOverride: r.errorOverride,
+      );
 }
 
 // =================================================
@@ -841,7 +878,9 @@ class KRequest<TDecoded> extends KRestRequest<TDecoded> {
     headers: headers ?? this.headers,
     data: data ?? this.data,
     queryParams: queryParams ?? this.queryParams,
-    options: (options ?? this.options)?.copyWith(headers: headers ?? this.headers),
+    options: (options ?? this.options)?.copyWith(
+      headers: headers ?? this.headers,
+    ),
     cancelToken: cancelToken ?? this.cancelToken,
     onReceiveProgress: onReceiveProgress ?? this.onReceiveProgress,
     decoder: decoder ?? this.decoder,
@@ -913,7 +952,10 @@ class KFetchRequest<TDecoded> extends KRestRequest<TDecoded> {
     errorOverride: errorOverride ?? this.errorOverride,
   );
 
-  factory KFetchRequest.from(KRestRequest<TDecoded> r, RequestOptions requestOptions) => KFetchRequest<TDecoded>(
+  factory KFetchRequest.from(
+    KRestRequest<TDecoded> r,
+    RequestOptions requestOptions,
+  ) => KFetchRequest<TDecoded>(
     r._api,
     requestOptions: requestOptions,
     usePrimary: r.usePrimary,

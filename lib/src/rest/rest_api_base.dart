@@ -164,21 +164,31 @@ abstract class KRestApiBase {
     transformer: transformer,
   );
 
-  Object? globalErrorOverride(dynamic data, Object? error, [StackTrace? st]) =>
-      defaultErrorOverride(_logOptions, data, error, st);
-}
+  Object? globalErrorOverride(
+    Response<dynamic> data,
+    Object? error, [
+    StackTrace? st,
+    Object? Function(Response<dynamic> data, Object? error, StackTrace? st)?
+    handleRawError,
+  ]) => defaultErrorOverride(_logOptions, data, error, st, handleRawError);
 
-Object? defaultErrorOverride(
-  LogOptions logOptions,
-  dynamic data,
-  Object? error, [
-  StackTrace? st,
-  Object? Function(dynamic data, Object? error, StackTrace? st)? handleRawError,
-]) {
-  if (handleRawError != null) return handleRawError(data, error, st);
-  if (data != null) {
-    final autoHandleError = switch (data) {
-      Map m => m["data"]["error"] ?? m["error"],
+  @mustCallSuper
+  Object? defaultErrorOverride(
+    LogOptions logOptions,
+    Response<dynamic> response,
+    Object? error, [
+    StackTrace? st,
+    Object? Function(Response<dynamic> data, Object? error, StackTrace? st)?
+    handleRawError,
+  ]) {
+    if (handleRawError != null) return handleRawError(response, error, st);
+    String? errorStr;
+    errorStr = switch (response.data) {
+      Map m =>
+        m["error"] ??
+            m["data"]["error"] ??
+            m["message"] ??
+            m["data"]["message"],
       String s => () {
         try {
           final decoded = jsonDecode(s) as Map;
@@ -189,45 +199,64 @@ Object? defaultErrorOverride(
       }(),
       _ => null,
     };
-    if (autoHandleError != null) return autoHandleError;
-  }
-  String? errorStr;
-  errorStr = switch (error) {
-    DioException d => switch (d.type) {
-      DioExceptionType.connectionTimeout =>
-        'Connection timed out. Please check your internet and try again.',
-      DioExceptionType.sendTimeout =>
-        'Request took too long to send. Please try again.',
-      DioExceptionType.receiveTimeout =>
-        'Server took too long to respond. Please try again.',
-      DioExceptionType.badCertificate =>
-        'Secure connection failed. Please update the app or contact support.',
-      DioExceptionType.badResponse => switch (error.response?.statusCode) {
-        400 => 'Bad request. Please check your input.',
-        401 => 'Session expired. Please sign in again or refresh.',
-        403 => 'You don\'t have permission to do that.',
-        404 => 'The requested resource was not found.',
-        408 => 'Request timed out. Please try again.',
-        409 => 'Conflict. This action can\'t be completed right now.',
-        422 => 'Invalid data submitted. Please check your input.',
-        429 => 'Too many requests. Please slow down and try again.',
-        500 => 'Something went wrong on our end. Please try again later.',
-        502 => 'Server is temporarily unavailable. Please try again.',
-        503 => 'Service is down for maintenance. Please try again later.',
-        504 => 'Server gateway timed out. Please try again.',
-        _ =>
-          'Unexpected error (${error.response?.statusCode}). Please try again.',
+    if (errorStr != null) {
+      _shouldLogError(logOptions, error, errorStr, st);
+      return errorStr;
+    }
+
+    errorStr = switch (error) {
+      DioException d => switch (d.type) {
+        DioExceptionType.connectionTimeout =>
+          'Connection timed out. Please check your internet and try again.',
+        DioExceptionType.sendTimeout =>
+          'Request took too long to send. Please try again.',
+        DioExceptionType.receiveTimeout =>
+          'Server took too long to respond. Please try again.',
+        DioExceptionType.badCertificate =>
+          'Secure connection failed. Please update the app or contact support.',
+        DioExceptionType.badResponse => switch (error.response?.statusCode) {
+          400 => 'Bad request. Please check your input.',
+          401 => 'Session expired. Please sign in again or refresh.',
+          403 => 'You don\'t have permission to do that.',
+          404 => 'The requested resource was not found.',
+          408 => 'Request timed out. Please try again.',
+          409 => 'Conflict. This action can\'t be completed right now.',
+          422 => 'Invalid data submitted. Please check your input.',
+          429 => 'Too many requests. Please slow down and try again.',
+          500 => 'Something went wrong on our end. Please try again later.',
+          502 => 'Server is temporarily unavailable. Please try again.',
+          503 => 'Service is down for maintenance. Please try again later.',
+          504 => 'Server gateway timed out. Please try again.',
+          _ =>
+            'Unexpected error (${error.response?.statusCode}). Please try again.',
+        },
+        DioExceptionType.cancel => 'Request was cancelled.',
+        DioExceptionType.connectionError =>
+          'No internet connection. Please check your network.',
+        DioExceptionType.unknown =>
+          'An unexpected error occurred. Please try again.',
       },
-      DioExceptionType.cancel => 'Request was cancelled.',
-      DioExceptionType.connectionError =>
-        'No internet connection. Please check your network.',
-      DioExceptionType.unknown =>
-        'An unexpected error occurred. Please try again.',
-    },
-    CertificateException c => c.message,
-    HandshakeException h => h.message,
-    _ => null,
-  };
+      CertificateException c => c.message,
+      HandshakeException h => h.message,
+      SocketException s => s.message,
+      TimeoutException t => t.message,
+      FormatException f => f.message,
+      _ => null,
+    };
+
+    _shouldLogError(logOptions, error, errorStr, st);
+
+    return errorStr ??
+        "Error: Override Global error in [KRestApiBase] for more info";
+  }
+}
+
+void _shouldLogError(
+  LogOptions logOptions,
+  Object? error,
+  String? errorStr,
+  StackTrace? st,
+) {
   if (logOptions.logAllError) {
     log(
       "${errorStr ?? error}",
@@ -237,6 +266,4 @@ Object? defaultErrorOverride(
       level: 1000,
     );
   }
-  return errorStr ??
-      "Error: Override Global error in [KRestApiBase] for more info";
 }

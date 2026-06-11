@@ -37,6 +37,21 @@ class KResponse<Raw, Formatted> extends Response<Raw> {
     );
   }
 
+  factory KResponse.error(Object? error, [StackTrace? st]) {
+    return KResponse._(
+      data: null,
+      decoder: null,
+      error: error,
+      requestOptions: RequestOptions(path: ''),
+      headers: null,
+      statusCode: null,
+      statusMessage: null,
+      extra: null,
+      redirects: [],
+      isRedirect: false,
+    );
+  }
+
   bool get isSuccess => data != null;
   Raw? get raw => data;
   Formatted? get decoded => value;
@@ -74,8 +89,13 @@ class ApiResult<Formatted> {
 
   /// v for value
   ApiResult<T> transform<T>(T Function(Formatted v) transformer) =>
-      value != null ? ApiResult<T>(value: transformer(value as Formatted), error: error) : ApiResult<T>(error: error);
+      value != null
+      ? ApiResult<T>(value: transformer(value as Formatted), error: error)
+      : ApiResult<T>(error: error);
 
   ApiResult<Formatted> copyWith({Formatted? value, Object? error}) =>
-      ApiResult<Formatted>(value: value ?? this.value, error: error ?? this.error);
+      ApiResult<Formatted>(
+        value: value ?? this.value,
+        error: error ?? this.error,
+      );
 }

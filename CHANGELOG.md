@@ -1,3 +1,8 @@
+## 0.0.1-dev.16
+- Fixed error handling in KRestApiBase.globalErrorOverride
+- Breaking changes: Response to be passed in globalErrorOverride instead of dynamic
+- Added an error factory for KResponse
+
 ## 0.0.1-dev.15
 - Improved error handling in KRestApiBase.globalErrorOverride
 - Made baseUrl accessible in KRestApiBase
