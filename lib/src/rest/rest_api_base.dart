@@ -184,11 +184,7 @@ abstract class KRestApiBase {
     if (handleRawError != null) return handleRawError(response, error, st);
     String? errorStr;
     errorStr = switch (response.data) {
-      Map m =>
-        m["error"] ??
-            m["data"]["error"] ??
-            m["message"] ??
-            m["data"]["message"],
+      Map m => m["error"] ?? m["data"]["error"],
       String s => () {
         try {
           final decoded = jsonDecode(s) as Map;

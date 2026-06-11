@@ -1,3 +1,6 @@
+## 0.0.1-dev.17
+- Fixed critical mistake where we assumed [message] to be a substitute for [error] in the globalErrorOverride
+
 ## 0.0.1-dev.16
 - Fixed error handling in KRestApiBase.globalErrorOverride
 - Breaking changes: Response to be passed in globalErrorOverride instead of dynamic
