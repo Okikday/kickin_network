@@ -1,3 +1,7 @@
+## 0.0.1-dev.14
+- Added an extra logError arg to the [LogOptions] to better control what gets logged
+- Improved exception handling in KRestApiBase
+
 ## 0.0.1-dev.13
 - Improved error handling with KRestApiBase.globalErrorOverride
 
