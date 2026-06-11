@@ -16,9 +16,9 @@ extension ExtOnRestRequest<TDecoded> on KRestRequest<TDecoded> {
             _api._parent.globalErrorOverride(result, null),
       );
     } catch (e, st) {
-      final errResponse = Response<Raw>(
-        requestOptions: _requestOptionsFor(method),
-      );
+      final errResponse = e is DioException && e.response != null
+          ? e.response as Response<Raw>
+          : Response<Raw>(requestOptions: _requestOptionsFor(method));
       final kResponse = KResponse<Raw, TDecoded>.fromDioResponse(
         errResponse,
         decoder: decoder,

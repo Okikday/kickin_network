@@ -16,9 +16,9 @@ extension ExtOnRestUriRequest<TDecoded> on KUriRequest<TDecoded> {
             _api._parent.globalErrorOverride(result, null),
       );
     } catch (e, st) {
-      final errResponse = Response<Raw>(
-        requestOptions: _requestOptionsFor(method),
-      );
+      final errResponse = e is DioException && e.response != null
+          ? e.response as Response<Raw>
+          : Response<Raw>(requestOptions: _requestOptionsFor(method));
       final kResponse = KResponse<Raw, TDecoded>.fromDioResponse(
         errResponse,
         decoder: decoder,
@@ -26,6 +26,7 @@ extension ExtOnRestUriRequest<TDecoded> on KUriRequest<TDecoded> {
             errorOverride?.call(errResponse, e, st) ??
             _api._parent.globalErrorOverride(errResponse, e, st),
       );
+
       if (kDebugMode && logOptions?.logAllError == true) {
         _logResponse(logOptions ?? _apiBase._logOptions, method, kResponse);
       }

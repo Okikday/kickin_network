@@ -1,3 +1,6 @@
+## 0.0.1-dev.19
+- Fixed the response to propagate data even when it throws where you use any of the catchErrorOnSend in the requests.
+
 ## 0.0.1-dev.18
 - Fixed error where globalErrorOverride still throws even when server returns an error
 
