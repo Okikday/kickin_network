@@ -1,3 +1,6 @@
+## 0.0.1-dev.20
+- Improved error handling and propagation of defaultErrorOverride and globalErrorOverride in KRestApiBase.
+
 ## 0.0.1-dev.19
 - Fixed the response to propagate data even when it throws where you use any of the catchErrorOnSend in the requests.
 

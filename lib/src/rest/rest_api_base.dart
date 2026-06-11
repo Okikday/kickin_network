@@ -163,26 +163,31 @@ abstract class KRestApiBase {
     httpClientAdapter: httpClientAdapter,
     transformer: transformer,
   );
-}
 
-extension KRestApiBaseErrorHandlerExtension on KRestApiBase {
   Object? globalErrorOverride(
     Response<dynamic> response,
     Object? error, [
     StackTrace? st,
-    Object? Function(Response<dynamic> data, Object? error, StackTrace? st)?
-    handleRawError,
-  ]) => defaultErrorOverride(_logOptions, response, error, st, handleRawError);
+  ]) {
+    try {
+      return defaultErrorOverride(_logOptions, response, error, st);
+    } catch (e) {
+      shouldLogError(
+        _logOptions,
+        error,
+        "Error swallowed by globalErrorOverride. Override defaultErrorOverride for explicit catching. ",
+        st,
+      );
+      return null;
+    }
+  }
 
   Object? defaultErrorOverride(
     LogOptions logOptions,
     Response<dynamic> response,
     Object? error, [
     StackTrace? st,
-    Object? Function(Response<dynamic> response, Object? error, StackTrace? st)?
-    handleRawError,
   ]) {
-    if (handleRawError != null) return handleRawError(response, error, st);
     String? errorStr;
     final data =
         response.data ?? (error is DioException ? error.response?.data : null);
@@ -235,9 +240,10 @@ extension KRestApiBaseErrorHandlerExtension on KRestApiBase {
     };
 
     shouldLogError(logOptions, error, errorStr, st);
-
-    return errorStr ??
-        "Error: Override Global error in [KRestApiBase] for more info";
+    if (errorStr == null) {
+      throw ("Error: Override Global error and catch the super override in [KRestApiBase] for more info");
+    }
+    return errorStr;
   }
 
   String? resolveErrorStr(dynamic data) => switch (data) {
