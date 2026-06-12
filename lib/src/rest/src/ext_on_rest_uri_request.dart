@@ -41,6 +41,28 @@ extension ExtOnRestUriRequest<TDecoded> on KUriRequest<TDecoded> {
     }
   }
 
+  Future<KResponse<Raw, TDecoded>> sendResponse<Raw>() => _send(false);
+  Future<KResponse<Raw, TDecoded>> trySendResponse<Raw>() => _send(true);
+  Future<TDecoded?> send() => _send(false).then((v) => v.value);
+  Future<TDecoded?> trySend() => _send(true).then((v) => v.value);
+  Future<ApiResult<TDecoded?>> sendResult() =>
+      _send(false).then((v) => v.result);
+  Future<ApiResult<TDecoded?>> trySendResult() =>
+      _send(true).then((v) => v.result);
+
+  // /// Do not convert from Other Request types to another Request type unless it's a [KRequest], otherwise you might lose some of the properties that are only available in those specific request types. For example, converting from [KPostRequest] to [KGetRequest] would lose the body of the request, which is not available in [KGetRequest].
+  // KGetUriRequest<TDecoded> toGet() => KGetUriRequest<TDecoded>.from(this);
+  // KPostUriRequest<TDecoded> toPost() => KPostUriRequest<TDecoded>.from(this);
+  // KPutUriRequest<TDecoded> toPut() => KPutUriRequest<TDecoded>.from(this);
+  // KPatchUriRequest<TDecoded> toPatch() => KPatchUriRequest<TDecoded>.from(this);
+  // KDeleteUriRequest<TDecoded> toDelete() => KDeleteUriRequest<TDecoded>.from(this);
+  // KDownloadUriRequest<TDecoded> toDownload({required dynamic savePath}) =>
+  //     KDownloadUriRequest<TDecoded>.from(this, savePath: savePath);
+  // KUriRequest<TDecoded> toUriRequest() => KRequest<TDecoded>.from(this);
+}
+
+/// Extension for logging and sending requests on KUriRequest. This is separate from [ExtOnRestRequest] to avoid bloating the main request extension with logging logic, and to allow for more specific extensions on KUriRequest in the future without affecting other request types.
+extension ExtraExtOnRestUriRequest<TDecoded> on KUriRequest<TDecoded> {
   void _logRequest(LogOptions logOptions, String method) {
     if (logOptions.parts.isEmpty) return;
 
@@ -115,9 +137,13 @@ extension ExtOnRestUriRequest<TDecoded> on KUriRequest<TDecoded> {
 
     final title = 'Response(${result.statusCode ?? 'ERR'}): ${uri.toString()}';
 
-    final prettyJson = output.isNotEmpty
-        ? '\n${const JsonEncoder.withIndent('  ').convert(output)}'
-        : '';
+    final prettyJson =
+        (output.isNotEmpty
+                ? '\n${const JsonEncoder.withIndent('  ').convert(output)}'
+                : '')
+            .replaceAll('\\n', '\n')
+            .replaceAll('\\t', '\t')
+            .replaceAll('\\r', '');
 
     if (isOk) {
       NetworkLog.success('$title$prettyJson');
@@ -125,23 +151,4 @@ extension ExtOnRestUriRequest<TDecoded> on KUriRequest<TDecoded> {
       NetworkLog.error('$title$prettyJson', error, stackTrace);
     }
   }
-
-  Future<KResponse<Raw, TDecoded>> sendResponse<Raw>() => _send(false);
-  Future<KResponse<Raw, TDecoded>> trySendResponse<Raw>() => _send(true);
-  Future<TDecoded?> send() => _send(false).then((v) => v.value);
-  Future<TDecoded?> trySend() => _send(true).then((v) => v.value);
-  Future<ApiResult<TDecoded?>> sendResult() =>
-      _send(false).then((v) => v.result);
-  Future<ApiResult<TDecoded?>> trySendResult() =>
-      _send(true).then((v) => v.result);
-
-  // /// Do not convert from Other Request types to another Request type unless it's a [KRequest], otherwise you might lose some of the properties that are only available in those specific request types. For example, converting from [KPostRequest] to [KGetRequest] would lose the body of the request, which is not available in [KGetRequest].
-  // KGetUriRequest<TDecoded> toGet() => KGetUriRequest<TDecoded>.from(this);
-  // KPostUriRequest<TDecoded> toPost() => KPostUriRequest<TDecoded>.from(this);
-  // KPutUriRequest<TDecoded> toPut() => KPutUriRequest<TDecoded>.from(this);
-  // KPatchUriRequest<TDecoded> toPatch() => KPatchUriRequest<TDecoded>.from(this);
-  // KDeleteUriRequest<TDecoded> toDelete() => KDeleteUriRequest<TDecoded>.from(this);
-  // KDownloadUriRequest<TDecoded> toDownload({required dynamic savePath}) =>
-  //     KDownloadUriRequest<TDecoded>.from(this, savePath: savePath);
-  // KUriRequest<TDecoded> toUriRequest() => KRequest<TDecoded>.from(this);
 }

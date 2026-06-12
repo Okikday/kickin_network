@@ -1,3 +1,7 @@
+## 0.0.1-dev.22
+- Improved json formatting when logging Requests and Responses
+- Fix error not evaluating other kind of Object but Strings (breaking change: method rename)
+
 ## 0.0.1-dev.21
 - fix little logging issue with response errors
 

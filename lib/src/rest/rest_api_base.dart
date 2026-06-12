@@ -188,18 +188,16 @@ abstract class KRestApiBase {
     Object? error, [
     StackTrace? st,
   ]) {
-    String? errorStr;
+    Object? errorObj;
     final data =
         response.data ?? (error is DioException ? error.response?.data : null);
     if (data != null) {
-      errorStr = resolveErrorStr(response.data);
-      if (errorStr != null) {
-        shouldLogError(logOptions, error, errorStr, st);
-        return errorStr;
-      }
+      errorObj = resolveErrorObj(response.data);
+      shouldLogError(logOptions, error, errorObj, st);
+      return errorObj;
     }
 
-    errorStr = switch (error) {
+    errorObj = switch (error) {
       DioException d => switch (d.type) {
         DioExceptionType.connectionTimeout =>
           'Connection timed out. Please check your internet and try again.',
@@ -239,35 +237,35 @@ abstract class KRestApiBase {
       _ => null,
     };
 
-    shouldLogError(logOptions, error, errorStr, st);
-    if (errorStr == null) {
+    shouldLogError(logOptions, error, errorObj, st);
+    if (errorObj == null) {
       throw ("Error: Override Global error and catch the super override in [KRestApiBase] for more info or set validateStatus to always return true");
     }
-    return errorStr;
+    return errorObj;
   }
 
-  String? resolveErrorStr(dynamic data) => switch (data) {
+  Object? resolveErrorObj(dynamic data) => switch (data) {
     Map m => m["error"] ?? m["data"]["error"],
     String s => () {
       try {
         final decoded = jsonDecode(s) as Map;
         return decoded["data"]["error"] ?? decoded["error"];
       } catch (e) {
-        return null;
+        return s;
       }
     }(),
-    _ => null,
+    _ => data,
   };
 
   void shouldLogError(
     LogOptions logOptions,
     Object? error,
-    String? errorStr,
+    Object? errorObj,
     StackTrace? st,
   ) {
     if (logOptions.logAllError) {
       log(
-        "${errorStr ?? error}",
+        "${errorObj ?? error}",
         error: error,
         stackTrace: st,
         name: "KRestApiBase.globalErrorOverride",
