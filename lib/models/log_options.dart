@@ -12,6 +12,8 @@ enum LogPart {
 class LogOptions {
   final Set<LogPart> parts;
   final int maxLogLength;
+
+  /// Only Request and Responses bypass this option. All other errors from other parts of the API will be logged when this is set to true, regardless of the [parts] option.
   final bool logAllError;
 
   const LogOptions.none() : this(parts: const {}, maxLogLength: 0);

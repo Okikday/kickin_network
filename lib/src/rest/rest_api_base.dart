@@ -241,7 +241,7 @@ abstract class KRestApiBase {
 
     shouldLogError(logOptions, error, errorStr, st);
     if (errorStr == null) {
-      throw ("Error: Override Global error and catch the super override in [KRestApiBase] for more info");
+      throw ("Error: Override Global error and catch the super override in [KRestApiBase] for more info or set validateStatus to always return true");
     }
     return errorStr;
   }

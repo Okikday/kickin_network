@@ -1,3 +1,6 @@
+## 0.0.1-dev.21
+- fix little logging issue with response errors
+
 ## 0.0.1-dev.20
 - Improved error handling and propagation of defaultErrorOverride and globalErrorOverride in KRestApiBase.
 

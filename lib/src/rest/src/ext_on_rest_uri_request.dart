@@ -27,8 +27,14 @@ extension ExtOnRestUriRequest<TDecoded> on KUriRequest<TDecoded> {
             _api._parent.globalErrorOverride(errResponse, e, st),
       );
 
-      if (kDebugMode && logOptions?.logAllError == true) {
-        _logResponse(logOptions ?? _apiBase._logOptions, method, kResponse);
+      if (kDebugMode) {
+        _logResponse(
+          logOptions ?? _apiBase._logOptions,
+          method,
+          kResponse,
+          e,
+          st,
+        );
       }
       if (!tryRun) rethrow;
       return kResponse;
