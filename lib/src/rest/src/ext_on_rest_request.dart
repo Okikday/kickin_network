@@ -147,7 +147,11 @@ extension ExtraExtOnRestRequest<TDecoded> on KRestRequest<TDecoded> {
     if (isOk) {
       NetworkLog.success('$title$prettyJson');
     } else {
-      NetworkLog.error('$title$prettyJson', error, stackTrace);
+      NetworkLog.error(
+        '$title$prettyJson',
+        logOptions.logAllError ? error : null,
+        logOptions.logAllError ? stackTrace : null,
+      );
     }
   }
 }
