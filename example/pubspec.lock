@@ -262,15 +262,15 @@ packages:
       path: ".."
       relative: true
     source: path
-    version: "0.0.1-dev.22"
+    version: "0.0.1"
   kickin_storage:
     dependency: transitive
     description:
       name: kickin_storage
-      sha256: b43502e4e9bafa3627fae74639eb05fb2a9291604ce29145e762c136b874b0b7
+      sha256: "5b97f5ff91a400e9fa56ccc2e33194b56054461f10090dd06cb8888275225f14"
       url: "https://pub.dev"
     source: hosted
-    version: "0.0.1-dev.3"
+    version: "0.0.1"
   leak_tracker:
     dependency: transitive
     description:
