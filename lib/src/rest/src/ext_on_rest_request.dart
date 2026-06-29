@@ -1,5 +1,6 @@
 part of '../rest_api_base.dart';
 
+/// Contains methods for executing requests and handling their responses.
 extension ExtOnRestRequest<TDecoded> on KRestRequest<TDecoded> {
   Future<KResponse<Raw, TDecoded>> _send<Raw>(bool tryRun) async {
     try {
@@ -41,13 +42,24 @@ extension ExtOnRestRequest<TDecoded> on KRestRequest<TDecoded> {
     }
   }
 
+  /// Executes the request, throwing an exception on failure.
   Future<KResponse<Raw, TDecoded>> sendResponse<Raw>() => _send(false);
+  
+  /// Executes the request safely, returning errors in the [KResponse] rather than throwing.
   Future<KResponse<Raw, TDecoded>> catchErrorOnSendResponse<Raw>() =>
       _send(true);
+      
+  /// Executes the request and directly returns the decoded payload. Throws on failure.
   Future<TDecoded?> send() => _send(false).then((v) => v.value);
+  
+  /// Executes the request safely and directly returns the decoded payload, yielding null on failure.
   Future<TDecoded?> catchErrorOnSend() => _send(true).then((v) => v.value);
+  
+  /// Executes the request and returns an [ApiResult]. Throws on failure.
   Future<ApiResult<TDecoded?>> sendResult() =>
       _send(false).then((v) => v.result);
+      
+  /// Executes the request safely and returns an [ApiResult], capturing any error cleanly.
   Future<ApiResult<TDecoded?>> catchErrorOnSendResult() =>
       _send(true).then((v) => v.result);
 

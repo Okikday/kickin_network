@@ -106,83 +106,123 @@ void dispose() {
 
 ### Usage
 
+A typical real-world setup involves defining a central `Api` hub extending `KRestApiBase`, feature-specific modules extending `KRestApi`, and utilizing extensions to keep your API definitions declarative and execution methods clean.
+
 ```dart
 import 'package:kickin_network/kickin_network.dart';
 
-class MyApi extends KRestApiBase with KApiCacheMixin, KApiMonitorMixin {
-  MyApi._();
-  static final shared = MyApi._();
+// 1. Define your main API Hub
+class Api extends KRestApiBase {
+  Api._();
+  static final instance = Api._();
 
+  // Feature specific APIs
   late final users = UsersApi(this);
-  
-  // @override
-  // Object? globalErrorOverride(dynamic data, Object? error, [StackTrace? st]) {
-  // if (error == null) return null;
-  //  if (error is Map && error.containsKey("error")) return error;
-  //  return null;
-  // }
+
+  Future<void> init() async {
+    await super.intialize(
+      baseUrl: 'https://api.myapp.com',
+      logOptions: const LogOptions(
+        logAllError: false,
+        parts: {LogPart.queryParams, LogPart.requestHeaders, LogPart.requestBody, LogPart.responseBody, LogPart.errors},
+      ),
+    );
+
+    // Add global interceptors like token refresh
+    primaryInterceptors.add(
+      TokenRefreshInterceptor(onSessionInvalid: () async { /* handle logout */ }),
+    );
+  }
+
+  // Optional: Global error parser
+  @override
+  String? globalErrorOverride(Response response, Object? error, [StackTrace? st]) {
+    final result = super.globalErrorOverride(response, error, st);
+    if (result == null) return null;
+    
+    // Parse global API error response format
+    if (result is String) return result;
+    if (result is List) return result.take(3).map((e) => e.toString()).join(', ');
+    return result.toString();
+  }
 }
 
-class UsersApi extends KRestApi<Map<String, dynamic>> {
+// 2. Define global extensions for common parsing and headers
+extension KApiExtension on KRestApi {
+  Map<String, String> addAuthAccessTokenHeader([Map<String, String>? headers]) {
+    final h = headers ?? {};
+    final accessToken = "YOUR_TOKEN"; // Load your token securely
+    return accessToken.isEmpty ? h : h..['Authorization'] = 'Bearer $accessToken';
+  }
+
+  // Utility to extract data from a standard { "data": ... } response
+  dynamic castDataFromRaw(dynamic data) {
+    if (data is Map && data.containsKey("data")) {
+      return data["data"];
+    }
+    return data;
+  }
+}
+
+// 3. Define feature APIs (e.g., Users)
+class UsersApi extends KRestApi {
   UsersApi(super.parent);
 
-  late final getUser = KGetRequest<Map<String, dynamic>>(
+  static const _usersMe = "/users/me";
+
+  // Declare request definitions declaratively
+  late final getProfileRequest = KGetRequest(
     this,
-    path: '/user',
-    decoder: (data, _) => data as Map<String, dynamic>,
+    path: _usersMe,
+    decoder: (data, _) => UserModel.fromMap(castDataFromRaw(data)),
   );
 
-  Future<Map<String, dynamic>?> fetchUser() async {
-    // Return cached value if available
-    if (cache != null) return cache;
-
-    final result = await getUser.copyWith(
-      headers: await loadAuthHeaders(),
-    ).send();
-
-    // OR
-    // final apiResult = await getUser.copyWith(
-    // headers: await loadAuthHeaders(),
-    // ).sendResult()
-    // We can then access apiResult.value or apiResult.error
-    // errors can be overriden in KRestApiBase or set in the KRestRequest
-    // e.g 
-    
-
-    if (result != null) setCache(result);
-    return result;
-  }
-  
+  late final updateFcmTokenRequest = KPatchRequest(
+    this,
+    path: '$_usersMe/fcm-token',
+    decoder: (_, response) => response.statusCode == 200,
+  );
 }
 
+// 4. Use extensions on Feature APIs to keep request execution methods clean
+extension UsersApiExt on UsersApi {
+  Future<ApiResult<UserModel?>> getProfile() =>
+      getProfileRequest.copyWith(headers: addAuthAccessTokenHeader()).catchErrorOnSendResult();
+
+  Future<KResponse<dynamic, bool>> updateFcmToken(String fcmToken) =>
+      updateFcmTokenRequest
+          .copyWith(headers: addAuthAccessTokenHeader(), data: {"fcmToken": fcmToken})
+          .catchErrorOnSendResponse();
+}
+
+// 5. Initialize and use anywhere
 Future<void> main() async {
-  await MyApi.shared.intialize(
-    baseUrl: 'https://api.myapp.com',
-    syncCacheToStorage: true,
-    logOptions: LogOptions.debugAll(),
-  );
+  await Api.instance.init();
 
-  MyApi.shared.startMonitoring();
-  MyApi.shared.primaryInterceptors.add((...){
-    log("some interception");
-  });
-
-  final user = await MyApi.shared.users.fetchUser();
-  print(user);
+  // Fetching data safely, catching errors without throwing exceptions
+  final profileResult = await Api.instance.users.getProfile();
+  
+  if (profileResult.value != null) {
+    print("User: ${profileResult.value}");
+  } else {
+    print("Error: ${profileResult.error}");
+  }
 }
 ```
 
-### Example requests
+### Example Requests & Request Cloning
+
+You can easily clone and transform requests for different scenarios using `copyWith`.
 
 ```dart
-final api = MyApi.shared;
+final api = Api.instance;
 
-// Safe — returns null instead of throwing
-final profile = await api.users.getUser.tryGet();
+// Safe — returns null instead of throwing on HTTP errors
+final profile = await api.users.getProfileRequest.tryGet();
 
-// Clone with a path transform
-final updated = await api.users.getUser.copyWith(
-  pathTransform: (path) => '$path/profile',
+// Clone with a path transform for dynamic routes
+final specificUser = await api.users.getProfileRequest.copyWith(
+  pathTransform: (path) => '/users/$userId', // e.g. from /users/me -> /users/123
 ).get();
 ```
 

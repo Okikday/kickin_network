@@ -12,8 +12,8 @@ import 'src/network_logger.dart';
 
 export 'package:dio/dio.dart' show CancelToken, Options, FileAccessMode;
 
-part '../../models/api_response.dart';
-part '../../models/log_options.dart';
+part '../models/api_response.dart';
+part '../models/log_options.dart';
 
 part 'src/api_monitor_mixin.dart';
 part 'src/api_cache_mixin.dart';
@@ -124,9 +124,13 @@ abstract class KRestApiBase {
   /// primary client.
   void setExternalDio(Dio dio) => _eDio = dio;
 
+  /// The base URL prepended to all requests sent through this API root.
   String get baseUrl => _baseUrl;
 
+  /// Modifiable list of interceptors for the primary Dio client.
   Interceptors get primaryInterceptors => _primaryDio.interceptors;
+
+  /// Access or update the base options for the primary Dio client.
   BaseOptions get primaryOptions => _primaryDio.options;
   set primaryOptions(BaseOptions options) => _primaryDio.options = options;
   Transformer get primaryTransformer => _primaryDio.transformer;
@@ -140,6 +144,7 @@ abstract class KRestApiBase {
   set externalTransformer(Transformer transformer) =>
       _externalDio.transformer = transformer;
 
+  /// Creates a clone of the primary Dio client, allowing for local overrides.
   Dio primaryClone({
     BaseOptions? options,
     Interceptors? interceptors,
@@ -152,6 +157,7 @@ abstract class KRestApiBase {
     transformer: transformer,
   );
 
+  /// Creates a clone of the external Dio client, allowing for local overrides.
   Dio externalClone({
     BaseOptions? options,
     Interceptors? interceptors,
@@ -164,6 +170,8 @@ abstract class KRestApiBase {
     transformer: transformer,
   );
 
+  /// Global error interceptor to format errors into a unified structure.
+  /// Subclasses can override this to implement custom error parsing logic.
   Object? globalErrorOverride(
     Response<dynamic> response,
     Object? error, [
@@ -226,6 +234,8 @@ abstract class KRestApiBase {
         DioExceptionType.cancel => 'Request was cancelled.',
         DioExceptionType.connectionError =>
           'No internet connection. Please check your network.',
+        DioExceptionType.transformTimeout =>
+          'Data processing took too long. Please try again.',
         DioExceptionType.unknown =>
           'An unexpected error occurred. Please try again.',
       },
@@ -244,6 +254,7 @@ abstract class KRestApiBase {
     return errorObj;
   }
 
+  /// Attempts to extract a readable error message or object from the raw response data.
   Object? resolveErrorObj(dynamic data) => switch (data) {
     Map m => m["error"] ?? m["data"]["error"],
     String s => () {
@@ -257,6 +268,7 @@ abstract class KRestApiBase {
     _ => data,
   };
 
+  /// Conditionally logs an error if [LogOptions.logAllError] is enabled.
   void shouldLogError(
     LogOptions logOptions,
     Object? error,

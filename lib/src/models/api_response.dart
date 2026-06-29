@@ -1,6 +1,8 @@
 // ignore_for_file: public_member_api_docs, sort_constructors_first
-part of '../src/rest/rest_api_base.dart';
+part of '../rest/rest_api_base.dart';
 
+/// A custom response wrapper extending Dio's [Response].
+/// Contains both the raw payload and a mechanism to decode it into a strongly typed [Formatted] object.
 class KResponse<Raw, Formatted> extends Response<Raw> {
   final Formatted Function(Raw data, Response<Raw> _)? decoder;
   final Object? error;
@@ -52,8 +54,13 @@ class KResponse<Raw, Formatted> extends Response<Raw> {
     );
   }
 
+  /// True if the request returned a non-null payload.
   bool get isSuccess => data != null;
+
+  /// The raw payload as received from Dio.
   Raw? get raw => data;
+
+  /// Shorthand to retrieve the decoded value.
   Formatted? get decoded => value;
 
   /// Don't call this if you didn't provide a [decoder] function, otherwise it would return null.
@@ -78,8 +85,12 @@ class KResponse<Raw, Formatted> extends Response<Raw> {
   ApiResult<Formatted> get result => ApiResult(value: value, error: error);
 }
 
+/// A structured result type holding either a successfully decoded [value] or an [error].
 class ApiResult<Formatted> {
+  /// The decoded value, if the request was successful.
   final Formatted? value;
+
+  /// The error object, if the request failed.
   final Object? error;
 
   const ApiResult({this.value, this.error});
