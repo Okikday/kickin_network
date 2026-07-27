@@ -1,280 +1,442 @@
-# kickin_network `#experimental`
+# kickin_network
 
-Kickin is a modern modular toolkit designed to turbocharge your Flutter development and eliminate boilerplate. It provides curated utilities, elegant extensions, and standardized architectures for common tasks like networking, state management, and storage.
+A Flutter package for making HTTP requests cleanly and reliably. It is built on top of [Dio](https://pub.dev/packages/dio), with typed responses, optional caching, and internet connectivity monitoring baked in.
 
-This is the **#network** part of it.
-
----
-
-## ✨ What's in the box
-
-| Feature | Description |
-|---|---|
-| `KRestApiBase` | Singleton-friendly API root with shared Dio, base URL, logging |
-| `KApiCacheMixin` mixin | Opt-in in-memory cache with optional Hive persistence |
-| `KApiMonitorMixin` mixin | Internet connectivity monitoring with listener management |
-| `KRestApi<T>` | Typed API client module with scoped cache and base URL access |
-| `KRestRequest` | Composable, cloneable HTTP request with full Dio feature coverage |
-| `KResponse<T>` | Structured response wrapper with typed success and error paths |
-| `LogOptions` | Configurable request/response logging for debug workflows |
+Part of the **Kickin** toolkit for Flutter.
 
 ---
 
-## 🌐 Network
-
-A unified layer for all remote communication, adaptable to different protocols.
-
-### REST APIs
-
-A robust and extensible wrapper over [Dio](https://pub.dev/packages/dio) for HTTP requests with structured error handling, caching, logging, and decoding.
-
-**Key classes:** `KRestApiBase`, `KRestApi`, `KRestRequest`, `KResponse`
-
-#### Request capabilities
-
-- Choose between a **primary Dio client** and an **external Dio client** per request.
-- Use `try…` request methods to capture failures as `KResponse` instead of throwing.
-- Clone and transform requests with `copyWith`, `toGetRequest`, `toPostRequest`, `toPutRequest`, `toPatchRequest`, `toDeleteRequest`, `toDownloadRequest`, and `toRequest`.
-- Prefix endpoints with a shared base URL, or opt out per request with `useBaseUrl: false`.
-- Log requests and responses with configurable `LogOptions`.
-- Download files with custom `savePath`, `fileAccessMode`, and `deleteOnError` behaviour.
-
-#### Caching — `KApiCacheMixin` mixin
-
-Cache is **opt-in** via a mixin. Apply `KApiCacheMixin` to your API root to unlock per-client in-memory caching, with optional persistence through `kickin_storage`.
-
-```dart
-class MyApi extends KRestApiBase with KApiCacheMixin {
-  static final shared = MyApi._();
-  MyApi._();
-}
-```
-
-Each `KRestApi` client gets a **scoped cache key** (`parentType_clientType`) so there are zero conflicts across clients. Override `id` if you mount multiple instances of the same client type on the same root.
-
-Cache is flushed to Hive in a **debounced batch** (300 ms) to keep write pressure low. On cold start, the stored key index is used to hydrate the in-memory map before any request fires.
-
-```dart
-// Inside a KRestApi subclass
-setCache(someValue);      // write
-cache;                    // read (typed via KRestApi<T>)
-clearCache();             // scoped delete — only this client's entry
-```
-
-Enable persistence in `intialize`:
-
-```dart
-await MyApi.shared.intialize(
-  syncCacheToStorage: true,
-  cacheBoxName: 'my_app_cache', // optional, defaults to 'kickin_api_cache'
-);
-```
-
-#### Connectivity monitoring — `KApiMonitorMixin` mixin
-
-Apply `KApiMonitorMixin` to subscribe to internet status changes anywhere in the app via your API singleton.
-
-```dart
-class MyApi extends KRestApiBase with KApiCacheMixin, KApiMonitorMixin { ... }
-
-// Start/stop globally
-MyApi.shared.startMonitoring();
-MyApi.shared.stopMonitoring();
-
-// Register a typed listener
-MyApi.shared.addListener((InternetStatus status) {
-  if (status == InternetStatus.disconnected) showOfflineBanner();
-});
-
-// Remove it when done
-MyApi.shared.removeListener(myListener);
-```
-
-Listeners are **paused** (not cancelled) by `stopMonitoring`, so they resume cleanly without re-registration. An internal debug subscription logs status changes when `monitorActivities` is enabled.
-
-#### Disposal
-
-```dart
-@override
-void dispose() {
-  MyApi.shared.disposeCache();     // cancels pending flush timer
-  MyApi.shared.disposeMonitor();   // cancels all subscriptions
-}
-```
-
----
-
-### Usage
-
-A typical real-world setup involves defining a central `Api` hub extending `KRestApiBase`, feature-specific modules extending `KRestApi`, and utilizing extensions to keep your API definitions declarative and execution methods clean.
-
-```dart
-import 'package:kickin_network/kickin_network.dart';
-
-// 1. Define your main API Hub
-class Api extends KRestApiBase {
-  Api._();
-  static final instance = Api._();
-
-  // Feature specific APIs
-  late final users = UsersApi(this);
-
-  Future<void> init() async {
-    await super.intialize(
-      baseUrl: 'https://api.myapp.com',
-      logOptions: const LogOptions(
-        logAllError: false,
-        parts: {LogPart.queryParams, LogPart.requestHeaders, LogPart.requestBody, LogPart.responseBody, LogPart.errors},
-      ),
-    );
-
-    // Add global interceptors like token refresh
-    primaryInterceptors.add(
-      TokenRefreshInterceptor(onSessionInvalid: () async { /* handle logout */ }),
-    );
-  }
-
-  // Optional: Global error parser
-  @override
-  String? globalErrorOverride(Response response, Object? error, [StackTrace? st]) {
-    final result = super.globalErrorOverride(response, error, st);
-    if (result == null) return null;
-    
-    // Parse global API error response format
-    if (result is String) return result;
-    if (result is List) return result.take(3).map((e) => e.toString()).join(', ');
-    return result.toString();
-  }
-}
-
-// 2. Define global extensions for common parsing and headers
-extension KApiExtension on KRestApi {
-  Map<String, String> addAuthAccessTokenHeader([Map<String, String>? headers]) {
-    final h = headers ?? {};
-    final accessToken = "YOUR_TOKEN"; // Load your token securely
-    return accessToken.isEmpty ? h : h..['Authorization'] = 'Bearer $accessToken';
-  }
-
-  // Utility to extract data from a standard { "data": ... } response
-  dynamic castDataFromRaw(dynamic data) {
-    if (data is Map && data.containsKey("data")) {
-      return data["data"];
-    }
-    return data;
-  }
-}
-
-// 3. Define feature APIs (e.g., Users)
-class UsersApi extends KRestApi {
-  UsersApi(super.parent);
-
-  static const _usersMe = "/users/me";
-
-  // Declare request definitions declaratively
-  late final getProfileRequest = KGetRequest(
-    this,
-    path: _usersMe,
-    decoder: (data, _) => UserModel.fromMap(castDataFromRaw(data)),
-  );
-
-  late final updateFcmTokenRequest = KPatchRequest(
-    this,
-    path: '$_usersMe/fcm-token',
-    decoder: (_, response) => response.statusCode == 200,
-  );
-}
-
-// 4. Use extensions on Feature APIs to keep request execution methods clean
-extension UsersApiExt on UsersApi {
-  Future<ApiResult<UserModel?>> getProfile() =>
-      getProfileRequest.copyWith(headers: addAuthAccessTokenHeader()).catchErrorOnSendResult();
-
-  Future<KResponse<dynamic, bool>> updateFcmToken(String fcmToken) =>
-      updateFcmTokenRequest
-          .copyWith(headers: addAuthAccessTokenHeader(), data: {"fcmToken": fcmToken})
-          .catchErrorOnSendResponse();
-}
-
-// 5. Initialize and use anywhere
-Future<void> main() async {
-  await Api.instance.init();
-
-  // Fetching data safely, catching errors without throwing exceptions
-  final profileResult = await Api.instance.users.getProfile();
-  
-  if (profileResult.value != null) {
-    print("User: ${profileResult.value}");
-  } else {
-    print("Error: ${profileResult.error}");
-  }
-}
-```
-
-### Example Requests & Request Cloning
-
-You can easily clone and transform requests for different scenarios using `copyWith`.
-
-```dart
-final api = Api.instance;
-
-// Safe — returns null instead of throwing on HTTP errors
-final profile = await api.users.getProfileRequest.tryGet();
-
-// Clone with a path transform for dynamic routes
-final specificUser = await api.users.getProfileRequest.copyWith(
-  pathTransform: (path) => '/users/$userId', // e.g. from /users/me -> /users/123
-).get();
-```
-
----
-
-## 📱 Platform setup
-
-Required only when using connectivity monitoring (`KApiMonitorMixin`).
-
-### Android
-
-Add permissions to `android/app/src/main/AndroidManifest.xml`:
-
-```xml
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
-  <uses-permission android:name="android.permission.INTERNET"/>
-  <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
-  ...
-```
-
-### macOS
-
-Add the network entitlement to `macos/Runner/DebugProfile.entitlements` **and** `macos/Runner/Release.entitlements`:
-
-```xml
-<plist version="1.0">
-  <dict>
-    <key>com.apple.security.app-sandbox</key>
-    <true/>
-    <key>com.apple.security.network.client</key>
-    <true/>
-  </dict>
-</plist>
-```
-
-> **Note:** The correct entitlement for outbound HTTP is `network.client`, not `network.server`.
-
----
-
-## 📦 Installation
+## Installation
 
 ```sh
 flutter pub add kickin_network
 ```
 
-Or add manually to `pubspec.yaml`:
+Or add it manually to your `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  kickin_network: 0.0.1
+  kickin_network: ^0.0.2+1
 ```
 
-**Dependencies:** [`dio`](https://pub.dev/packages/dio) · [`internet_connection_checker_plus`](https://pub.dev/packages/internet_connection_checker_plus) · [`kickin_storage`](https://pub.dev/packages/kickin_storage)
+---
 
-> Other network kinds (WebSocket, GraphQL) are on the way.
+## How it works
+
+The package gives you three things to work with:
+
+1. **An API hub** (`KRestApiBase`): one class per app that holds your base URL, Dio config, and interceptors.
+2. **Feature API clients** (`KRestApi`): one class per area of your app (e.g. `UsersApi`, `ChatsApi`). Each client is owned by the hub.
+3. **Requests** (`KGetRequest`, `KPostRequest`, etc.): declared once on your client, then called with `.send()` or `.catchErrorOnSend()` wherever you need them.
+
+Every response comes back as `ApiResult<T>`, which holds either a typed `value` or an `error` ending with no uncaught exceptions.
+
+---
+
+## Quick start
+
+### Step 1 — Create your API hub
+
+```dart
+import 'package:kickin_network/kickin_network.dart';
+
+class Api extends KRestApiBase {
+  Api._();
+  static final instance = Api._();
+
+  // Feature clients live here
+  late final users = UsersApi(this);
+
+  Future<void> init() async {
+    await super.intialize(
+      baseUrl: 'https://api.yourapp.com',
+    );
+  }
+}
+```
+
+### Step 2 — Create a feature client
+
+```dart
+class UsersApi extends KRestApi {
+  UsersApi(super.parent);
+
+  // Declare your requests once
+  late final getProfile = KGetRequest(
+    this,
+    path: '/users/me',
+    decoder: (data, _) => UserModel.fromMap(data),
+  );
+}
+```
+
+### Step 3 — Call it anywhere
+
+```dart
+await Api.instance.init();
+
+final result = await Api.instance.users.getProfile.catchErrorOnSendResult();
+
+if (result.isSuccess) {
+  print(result.value); // UserModel
+} else {
+  print(result.error); // human-readable error string
+}
+```
+
+That's the core loop. Everything else is opt-in.
+
+---
+
+## Sending requests
+
+Each request type has a few ways to execute it. Pick the one that fits your use case:
+
+| Method | Returns | Throws on error? |
+|---|---|---|
+| `.send()` | `TDecoded?` | Yes |
+| `.catchErrorOnSend()` | `TDecoded?` | No, returns `null` |
+| `.sendResponse()` | `KResponse<Raw, TDecoded>` | Yes |
+| `.catchErrorOnSendResponse()` | `KResponse<Raw, TDecoded>` | No |
+| `.sendResult()` | `ApiResult<TDecoded>` | Yes |
+| `.catchErrorOnSendResult()` | `ApiResult<TDecoded>` | No, **recommended** |
+
+**Recommendation:** Use `catchErrorOnSendResult()` in most cases. It never throws and gives you both value and error in one object.
+
+---
+
+## Request types
+
+| Class | HTTP method |
+|---|---|
+| `KGetRequest` | GET |
+| `KPostRequest` | POST |
+| `KPutRequest` | PUT |
+| `KPatchRequest` | PATCH |
+| `KDeleteRequest` | DELETE |
+| `KDownloadRequest` | GET (file download) |
+
+### Cloning requests for dynamic paths
+
+Use `.copyWith()` to create a modified copy of any request; useful for dynamic routes:
+
+```dart
+// Base request defined on the client
+late final getUserById = KGetRequest(this, path: '/users/me', ...);
+
+// Clone it with a different path at call time
+final result = await getUserById
+    .copyWith(pathTransform: (p) => '/users/$userId')
+    .catchErrorOnSendResult();
+```
+
+### Sending data (POST / PATCH / PUT)
+
+```dart
+late final updateBio = KPatchRequest(
+  this,
+  path: '/users/me',
+  decoder: (_, res) => res.statusCode == 200,
+);
+
+// At call time, attach the body
+final result = await updateBio
+    .copyWith(data: {'bio': 'Hello!'}, headers: addAuthHeader())
+    .catchErrorOnSendResult();
+```
+
+---
+
+## Responses
+
+### `ApiResult<T>`
+
+The cleanest response type (check `isSuccess` to see if it was successful):
+
+```dart
+final result = await api.users.getProfile.catchErrorOnSendResult();
+
+if (result.isSuccess) {
+  print(result.value); // your decoded model
+} else {
+  print(result.error); // error message string
+}
+```
+
+### `KResponse<Raw, Formatted>`
+
+Extends Dio's `Response`, so you can access raw HTTP details too:
+
+```dart
+final response = await api.users.getProfile.catchErrorOnSendResponse();
+
+print(response.statusCode);
+print(response.raw);     // raw payload
+print(response.value);   // decoded model
+print(response.error);   // error if any
+```
+
+---
+
+## Interceptors & global error handling
+
+Add global interceptors (e.g. token refresh) on your hub:
+
+```dart
+Api.instance.primaryInterceptors.add(
+  TokenRefreshInterceptor(onSessionInvalid: () async { /* logout */ }),
+);
+```
+
+Override `globalErrorOverride` to customise how errors are parsed:
+
+```dart
+class Api extends KRestApiBase {
+  @override
+  String? globalErrorOverride(Response response, Object? error, [StackTrace? st]) {
+    final result = super.globalErrorOverride(response, error, st);
+    if (result is List) return result.take(3).join(', ');
+    return result?.toString();
+  }
+}
+```
+
+The default implementation already handles common HTTP status codes (400, 401, 403, 404, 500, etc.) with readable messages.
+
+---
+
+## Logging
+
+Control what gets logged during development via `LogOptions`:
+
+```dart
+await super.intialize(
+  baseUrl: '...',
+  logOptions: LogOptions(
+    parts: {LogPart.requestBody, LogPart.responseBody, LogPart.errors},
+    maxLogLength: 2000,
+  ),
+);
+```
+
+**Preset shortcuts:**
+
+| Preset | What it logs |
+|---|---|
+| `LogOptions.debugAll()` | Everything |
+| `LogOptions.debugRequest()` | Request only (query, headers, body) |
+| `LogOptions.debugResponse()` | Response only (headers, body, errors) |
+| `LogOptions.normal()` | Query, request headers/body, response body |
+| `LogOptions.none()` | Nothing |
+
+> Logging only runs in debug mode.
+
+---
+
+## Optional: Caching — `KApiCacheMixin`
+
+Add in-memory caching to your hub with a mixin. Optionally sync it to disk.
+
+```dart
+class Api extends KRestApiBase with KApiCacheMixin {
+  static final instance = Api._();
+  Api._();
+}
+```
+
+Enable disk persistence (uses Hive via `kickin_storage`):
+
+```dart
+await Api.instance.intialize(
+  baseUrl: '...',
+  syncCacheToStorage: true,
+  cacheBoxName: 'my_app_cache', // optional
+);
+```
+
+Use cache inside a feature client:
+
+```dart
+class UsersApi extends KRestApi<UserModel> {
+  UsersApi(super.parent);
+
+  Future<UserModel?> getCachedProfile() async {
+    if (cache != null) return cache; // return cached value
+    final result = await getProfile.catchErrorOnSend();
+    if (result != null) setCache(result);
+    return result;
+  }
+}
+```
+
+- Each client gets its own cache slot meaning no conflicts between clients.
+- Disk writes are batched with a 300 ms debounce to avoid excessive I/O.
+- On app restart, the cache is restored from disk before any request fires.
+
+**Clean up:**
+
+```dart
+Api.instance.disposeCache(); // cancel pending writes
+```
+
+---
+
+## Optional: Internet monitoring — `KApiMonitorMixin`
+
+> Requires platform setup: see [Platform setup](#platform-setup) below.
+
+Add real-time connectivity monitoring to your hub:
+
+```dart
+class Api extends KRestApiBase with KApiCacheMixin, KApiMonitorMixin {
+  static final instance = Api._();
+  Api._();
+}
+```
+
+```dart
+// Start/stop monitoring globally
+Api.instance.startMonitoring();
+Api.instance.stopMonitoring();
+
+// React to connectivity changes
+void _onStatusChange(InternetStatus status) {
+  if (status == InternetStatus.disconnected) showOfflineBanner();
+}
+
+Api.instance.addListener(_onStatusChange);
+
+// Remove when done (e.g. in dispose)
+Api.instance.removeListener(_onStatusChange);
+```
+
+- Listeners are **paused** (not cancelled) when `stopMonitoring()` is called so they resume cleanly.
+- Call `disposeMonitor()` to clean up all subscriptions when the app shuts down.
+
+```dart
+@override
+void dispose() {
+  Api.instance.disposeCache();
+  Api.instance.disposeMonitor();
+}
+```
+
+---
+
+## Platform setup
+
+Required **only** when using `KApiMonitorMixin`.
+
+### Android
+
+Add to `android/app/src/main/AndroidManifest.xml`:
+
+```xml
+<uses-permission android:name="android.permission.INTERNET"/>
+<uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
+```
+
+### macOS
+
+Add to both `macos/Runner/DebugProfile.entitlements` and `macos/Runner/Release.entitlements`:
+
+```xml
+<key>com.apple.security.network.client</key>
+<true/>
+```
+
+---
+
+## Full example
+
+```dart
+import 'package:kickin_network/kickin_network.dart';
+
+// ── Hub ──────────────────────────────────────────────────────────────
+class Api extends KRestApiBase with KApiCacheMixin {
+  Api._();
+  static final instance = Api._();
+
+  late final users = UsersApi(this);
+
+  Future<void> init() async {
+    await super.intialize(
+      baseUrl: 'https://api.myapp.com',
+      syncCacheToStorage: true,
+      logOptions: LogOptions.debugAll(),
+    );
+
+    primaryInterceptors.add(
+      TokenRefreshInterceptor(onSessionInvalid: () async {}),
+    );
+  }
+}
+
+// ── Feature client ───────────────────────────────────────────────────
+class UsersApi extends KRestApi<UserModel> {
+  UsersApi(super.parent);
+
+  late final getProfile = KGetRequest(
+    this,
+    path: '/users/me',
+    decoder: (data, _) => UserModel.fromMap(data['data']),
+  );
+
+  late final updateFcmToken = KPatchRequest(
+    this,
+    path: '/users/me/fcm-token',
+    decoder: (_, res) => res.statusCode == 200,
+  );
+}
+
+// ── Extensions (keep call sites clean) ───────────────────────────────
+extension UsersApiExt on UsersApi {
+  Map<String, String> _authHeader() => {'Authorization': 'Bearer $yourToken'};
+
+  Future<ApiResult<UserModel?>> fetchProfile() =>
+      getProfile.copyWith(headers: _authHeader()).catchErrorOnSendResult();
+
+  Future<ApiResult<bool?>> pushFcmToken(String token) =>
+      updateFcmToken
+          .copyWith(headers: _authHeader(), data: {'fcmToken': token})
+          .catchErrorOnSendResult();
+}
+
+// ── Usage ─────────────────────────────────────────────────────────────
+Future<void> main() async {
+  await Api.instance.init();
+
+  final result = await Api.instance.users.fetchProfile();
+
+  if (result.isSuccess) {
+    print('Hello, ${result.value!.name}');
+  } else {
+    print('Error: ${result.error}');
+  }
+}
+```
+
+---
+
+## API reference summary
+
+| Class / Mixin | Purpose |
+|---|---|
+| `KRestApiBase` | Base class for your app's API hub |
+| `KApiCacheMixin` | Adds in-memory + optional disk caching to the hub |
+| `KApiMonitorMixin` | Adds internet connectivity monitoring to the hub |
+| `KRestApi<T>` | Base class for feature API clients |
+| `KRestRequest<T>` | Base class for all request wrappers |
+| `KGetRequest` | HTTP GET |
+| `KPostRequest` | HTTP POST |
+| `KPutRequest` | HTTP PUT |
+| `KPatchRequest` | HTTP PATCH |
+| `KDeleteRequest` | HTTP DELETE |
+| `KDownloadRequest` | File download |
+| `KResponse<Raw, Formatted>` | Full Dio response + typed decoded value |
+| `ApiResult<T>` | Lightweight result type: value or error |
+| `LogOptions` | Configure what gets logged and how |
+
+---
+
+> WebSocket and GraphQL support are planned for future releases.
