@@ -61,32 +61,17 @@ extension ExtOnRestUriRequest<TDecoded> on KUriRequest<TDecoded> {
   // KUriRequest<TDecoded> toUriRequest() => KRequest<TDecoded>.from(this);
 }
 
-/// Extension for logging and sending requests on KUriRequest. This is separate from [ExtOnRestRequest] to avoid bloating the main request extension with logging logic, and to allow for more specific extensions on KUriRequest in the future without affecting other request types.
+/// Extension for logging and sending requests on KUriRequest.
 extension ExtraExtOnRestUriRequest<TDecoded> on KUriRequest<TDecoded> {
   void _logRequest(LogOptions logOptions, String method) {
-    if (logOptions.parts.isEmpty) return;
-
-    final Map<String, dynamic> output = {};
-
-    if (logOptions.parts.contains(LogPart.queryParams) &&
-        uri.queryParameters.isNotEmpty) {
-      output['Query'] = uri.queryParameters;
-    }
-    if (logOptions.parts.contains(LogPart.requestBody) && data != null) {
-      output['Body'] = data;
-    }
-    if (logOptions.parts.contains(LogPart.requestHeaders) && headers != null) {
-      output['Headers'] = headers;
-    }
-
-    final title = 'Request($method): ${uri.toString()}';
-    if (output.isNotEmpty) {
-      final prettyJson = const JsonEncoder.withIndent('  ').convert(output);
-
-      NetworkLog.request('$title\n$prettyJson');
-    } else {
-      NetworkLog.request(title);
-    }
+    NetworkLog.logRequest(
+      logOptions: logOptions,
+      method: method,
+      pathOrUri: uri.toString(),
+      queryParams: uri.queryParameters.isNotEmpty ? uri.queryParameters : null,
+      data: data,
+      headers: headers,
+    );
   }
 
   void _logResponse<Raw>(
@@ -96,63 +81,15 @@ extension ExtraExtOnRestUriRequest<TDecoded> on KUriRequest<TDecoded> {
     Object? error,
     StackTrace? stackTrace,
   ]) {
-    if (logOptions.parts.isEmpty) return;
-    final bool isOk =
-        result.statusCode != null &&
-        result.statusCode! >= 200 &&
-        result.statusCode! < 300;
-    final Map<String, dynamic> output = {};
-
-    if (logOptions.parts.contains(LogPart.queryParams) &&
-        uri.queryParameters.isNotEmpty) {
-      output['Query'] = result is Response
-          ? result.requestOptions.queryParameters
-          : uri.queryParameters;
-    }
-
-    if (logOptions.parts.contains(LogPart.responseBody) &&
-        result is Response &&
-        result.data != null) {
-      String rawData = result.data.toString();
-
-      if (rawData.length > logOptions.maxLogLength) {
-        output['Data'] =
-            '${rawData.substring(0, logOptions.maxLogLength)}... [TRUNCATED]';
-      } else {
-        output['Data'] = result.data;
-      }
-    }
-
-    if (logOptions.parts.contains(LogPart.responseHeaders) &&
-        result is Response) {
-      output['Headers'] = result.headers.map;
-    }
-
-    if (!isOk &&
-        logOptions.parts.contains(LogPart.errors) &&
-        result is KResponse &&
-        result.error != null) {
-      output['Error Details'] = result.error.toString();
-    }
-
-    final title = 'Response(${result.statusCode ?? 'ERR'}): ${uri.toString()}';
-
-    final prettyJson =
-        (output.isNotEmpty
-                ? '\n${const JsonEncoder.withIndent('  ').convert(output)}'
-                : '')
-            .replaceAll('\\n', '\n')
-            .replaceAll('\\t', '\t')
-            .replaceAll('\\r', '');
-
-    if (isOk) {
-      NetworkLog.success('$title$prettyJson');
-    } else {
-      NetworkLog.error(
-        '$title$prettyJson',
-        logOptions.logAllError ? error : null,
-        logOptions.logAllError ? stackTrace : null,
-      );
-    }
+    NetworkLog.logResponse(
+      logOptions: logOptions,
+      method: method,
+      pathOrUri: uri.toString(),
+      result: result,
+      queryParams: uri.queryParameters.isNotEmpty ? uri.queryParameters : null,
+      error: error,
+      stackTrace: stackTrace,
+    );
   }
 }
+

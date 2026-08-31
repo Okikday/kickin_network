@@ -6,13 +6,14 @@ import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:internet_connection_checker_plus/internet_connection_checker_plus.dart';
-import 'src/network_logger.dart';
+import 'package:logger/logger.dart';
 
 export 'package:dio/dio.dart' show CancelToken, Options, FileAccessMode;
 
 part '../models/api_response.dart';
 part '../models/log_options.dart';
 
+part 'src/network_logger.dart';
 part 'src/api_monitor_mixin.dart';
 part 'src/rest_request.dart';
 part 'src/ext_on_rest_request.dart';
@@ -20,7 +21,6 @@ part 'src/rest_uri_request.dart';
 part 'src/ext_on_rest_uri_request.dart';
 
 part 'rest_api.dart';
-
 
 /// =================================================
 /// ApiBase

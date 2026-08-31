@@ -77,28 +77,14 @@ extension ExtOnRestRequest<TDecoded> on KRestRequest<TDecoded> {
 /// Extension for logging on KRestRequest
 extension ExtraExtOnRestRequest<TDecoded> on KRestRequest<TDecoded> {
   void _logRequest(LogOptions logOptions, String method) {
-    if (logOptions.parts.isEmpty) return;
-
-    final Map<String, dynamic> output = {};
-
-    if (logOptions.parts.contains(LogPart.queryParams) && queryParams != null) {
-      output['Query'] = queryParams;
-    }
-    if (logOptions.parts.contains(LogPart.requestBody) && data != null) {
-      output['Body'] = data;
-    }
-    if (logOptions.parts.contains(LogPart.requestHeaders) && headers != null) {
-      output['Headers'] = headers;
-    }
-
-    final title = 'Request($method): $_transformedPath';
-    if (output.isNotEmpty) {
-      final prettyJson = const JsonEncoder.withIndent('  ').convert(output);
-
-      NetworkLog.request('$title\n$prettyJson');
-    } else {
-      NetworkLog.request(title);
-    }
+    NetworkLog.logRequest(
+      logOptions: logOptions,
+      method: method,
+      pathOrUri: _transformedPath,
+      queryParams: queryParams,
+      data: data,
+      headers: headers,
+    );
   }
 
   void _logResponse<Raw>(
@@ -108,62 +94,15 @@ extension ExtraExtOnRestRequest<TDecoded> on KRestRequest<TDecoded> {
     Object? error,
     StackTrace? stackTrace,
   ]) {
-    if (logOptions.parts.isEmpty) return;
-    final bool isOk =
-        result.statusCode != null &&
-        result.statusCode! >= 200 &&
-        result.statusCode! < 300;
-    final Map<String, dynamic> output = {};
-
-    if (logOptions.parts.contains(LogPart.queryParams) && queryParams != null) {
-      output['Query'] = result is Response
-          ? result.requestOptions.queryParameters
-          : queryParams;
-    }
-
-    if (logOptions.parts.contains(LogPart.responseBody) &&
-        result is Response &&
-        result.data != null) {
-      String rawData = result.data.toString();
-
-      if (rawData.length > logOptions.maxLogLength) {
-        output['Data'] =
-            '${rawData.substring(0, logOptions.maxLogLength)}... [TRUNCATED]';
-      } else {
-        output['Data'] = result.data;
-      }
-    }
-
-    if (logOptions.parts.contains(LogPart.responseHeaders) &&
-        result is Response) {
-      output['Headers'] = result.headers.map;
-    }
-
-    if (!isOk &&
-        logOptions.parts.contains(LogPart.errors) &&
-        result is KResponse &&
-        result.error != null) {
-      output['Error Details'] = result.error.toString();
-    }
-
-    final title = 'Response(${result.statusCode ?? 'ERR'}): $_transformedPath';
-
-    final prettyJson =
-        (output.isNotEmpty
-                ? '\n${const JsonEncoder.withIndent('  ').convert(output)}'
-                : '')
-            .replaceAll('\\n', '\n')
-            .replaceAll('\\t', '\t')
-            .replaceAll('\\r', '');
-
-    if (isOk) {
-      NetworkLog.success('$title$prettyJson');
-    } else {
-      NetworkLog.error(
-        '$title$prettyJson',
-        logOptions.logAllError ? error : null,
-        logOptions.logAllError ? stackTrace : null,
-      );
-    }
+    NetworkLog.logResponse(
+      logOptions: logOptions,
+      method: method,
+      pathOrUri: _transformedPath,
+      result: result,
+      queryParams: queryParams,
+      error: error,
+      stackTrace: stackTrace,
+    );
   }
 }
+
