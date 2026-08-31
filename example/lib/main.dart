@@ -7,9 +7,9 @@ import 'package:kickin_network/kickin_network.dart';
 // =============================================================================
 
 /// Single shared instance for the entire app.
-/// - [KApiCache]    → in-memory cache with optional Hive persistence
-/// - [_ApiMonitor]  → internet connectivity monitoring
-class AppApi extends KRestApiBase with KApiCacheMixin, KInternetCheckerMixin {
+/// - Built-in in-memory cache on KRestApiBase
+/// - [KInternetCheckerMixin]  → internet connectivity monitoring
+class AppApi extends KRestApiBase with KInternetCheckerMixin {
   AppApi._();
   static final shared = AppApi._();
 
@@ -89,7 +89,6 @@ Future<void> main() async {
   await AppApi.shared.intialize(
     baseUrl: 'https://jsonplaceholder.typicode.com',
     monitorActivities: true,
-    syncCacheToStorage: true,
     logOptions: const LogOptions.normal(),
   );
 

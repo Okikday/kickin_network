@@ -8,7 +8,7 @@ import 'package:kickin_network/kickin_network.dart';
 // =============================================================================
 
 /// Minimal concrete API root with both mixins applied.
-class _TestApi extends KRestApiBase with KApiCacheMixin, KInternetCheckerMixin {
+class _TestApi extends KRestApiBase with KInternetCheckerMixin {
   _TestApi();
   late final items = _ItemsApi(this);
 }
@@ -166,10 +166,7 @@ void main() {
       expect(api.items.baseUrl, '');
     });
 
-    test('syncCacheToStorage without KApiCacheMixin asserts', () async {
-      // _TestApi has KApiCacheMixin so this should NOT assert.
-      expect(() => api.intialize(syncCacheToStorage: true), returnsNormally);
-    });
+
   });
 
   // ---------------------------------------------------------------------------

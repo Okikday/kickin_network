@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:collection';
 import 'dart:convert';
 import 'dart:developer';
 import 'dart:io';
@@ -7,7 +6,6 @@ import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:internet_connection_checker_plus/internet_connection_checker_plus.dart';
-import 'package:kickin_storage/kickin_storage.dart';
 import 'src/network_logger.dart';
 
 export 'package:dio/dio.dart' show CancelToken, Options, FileAccessMode;
@@ -16,7 +14,6 @@ part '../models/api_response.dart';
 part '../models/log_options.dart';
 
 part 'src/api_monitor_mixin.dart';
-part 'src/api_cache_mixin.dart';
 part 'src/rest_request.dart';
 part 'src/ext_on_rest_request.dart';
 part 'src/rest_uri_request.dart';
@@ -24,7 +21,6 @@ part 'src/ext_on_rest_uri_request.dart';
 
 part 'rest_api.dart';
 
-const kApiCacheBoxName = "kickin_api_cache";
 
 /// =================================================
 /// ApiBase
@@ -39,9 +35,13 @@ const kApiCacheBoxName = "kickin_api_cache";
 /// Create the child API objects after the `ApiBase` instance exists, either in
 /// the constructor body or through a lazy getter / `late final` field.
 ///
+/// Includes a built-in in-memory cache accessible via [getCache], [setCache],
+/// [removeCache], [hasCache], [clearCache], and [disposeCache]. Child
+/// [KRestApi] clients get scoped cache slots automatically.
+///
 /// Example:
 /// ```dart
-/// class MainApi extends KRestApiBase with KApiCache {
+/// class MainApi extends KRestApiBase {
 ///   static final on = MainApi._();
 ///   MainApi._();
 ///
@@ -54,6 +54,31 @@ const kApiCacheBoxName = "kickin_api_cache";
 /// conflicts between clients.
 abstract class KRestApiBase {
   KRestApiBase();
+
+  // =================================================
+  // In-memory cache
+  // =================================================
+
+  final _cacheMap = <String, dynamic>{};
+
+  /// Returns the cached value for [key], or `null` if absent.
+  CacheType? getCache<CacheType>(String key) => _cacheMap[key] as CacheType?;
+
+  /// Stores [value] under [key].
+  void setCache<CacheType>(String key, CacheType value) =>
+      _cacheMap[key] = value;
+
+  /// Removes the entry for [key].
+  void removeCache(String key) => _cacheMap.remove(key);
+
+  /// Returns true if [key] exists in the cache.
+  bool hasCache(String key) => _cacheMap.containsKey(key);
+
+  /// Clears the entire in-memory cache.
+  void clearCache() => _cacheMap.clear();
+
+  /// Releases cache resources. Call from your dispose method.
+  void disposeCache() => _cacheMap.clear();
 
   // =================================================
   // Internal config
@@ -86,31 +111,15 @@ abstract class KRestApiBase {
   /// [baseUrl]            – Prefix applied to every request. Leave empty to
   ///                        disable prefixing.
   /// [monitorActivities]  – Enables activity logging (debug mode only).
-  /// [cacheBoxName]       – Hive box name used when [syncCacheToStorage] is on.
-  /// [syncCacheToStorage] – Persists the in-memory cache to Hive on each write.
-  ///                        Requires the [KApiCacheMixin] mixin to be applied.
   /// [logOptions]         – Controls log verbosity and format.
   Future<void> intialize({
     String? baseUrl,
     bool monitorActivities = kDebugMode,
-    String cacheBoxName = kApiCacheBoxName,
-    bool syncCacheToStorage = false,
     LogOptions logOptions = const LogOptions.normal(),
   }) async {
     _enabledMonitoring = monitorActivities;
     _baseUrl = baseUrl ?? '';
     _logOptions = logOptions;
-
-    if (syncCacheToStorage) {
-      // Delegate persistence setup to KApiCache — will throw a clear error
-      // if the mixin hasn't been applied.
-      assert(
-        this is KApiCacheMixin,
-        'syncCacheToStorage requires the KApiCache mixin: '
-        '`class MyApi extends KRestApiBase with KApiCache`',
-      );
-      await (this as KApiCacheMixin)._initStorage(cacheBoxName);
-    }
   }
 
   // =================================================

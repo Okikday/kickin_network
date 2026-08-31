@@ -233,26 +233,9 @@ await super.intialize(
 
 ---
 
-## Optional: Caching — `KApiCacheMixin`
+## Built-in Caching
 
-Add in-memory caching to your hub with a mixin. Optionally sync it to disk.
-
-```dart
-class Api extends KRestApiBase with KApiCacheMixin {
-  static final instance = Api._();
-  Api._();
-}
-```
-
-Enable disk persistence (uses Hive via `kickin_storage`):
-
-```dart
-await Api.instance.intialize(
-  baseUrl: '...',
-  syncCacheToStorage: true,
-  cacheBoxName: 'my_app_cache', // optional
-);
-```
+Every `KRestApiBase` includes a built-in in-memory cache. No mixin required.
 
 Use cache inside a feature client:
 
@@ -270,13 +253,13 @@ class UsersApi extends KRestApi<UserModel> {
 ```
 
 - Each client gets its own cache slot meaning no conflicts between clients.
-- Disk writes are batched with a 300 ms debounce to avoid excessive I/O.
-- On app restart, the cache is restored from disk before any request fires.
+- For disk persistence, read from / write to the cache in your own code using
+  whatever storage solution you prefer.
 
 **Clean up:**
 
 ```dart
-Api.instance.disposeCache(); // cancel pending writes
+Api.instance.disposeCache(); // clears the in-memory cache
 ```
 
 ---
@@ -288,7 +271,7 @@ Api.instance.disposeCache(); // cancel pending writes
 Add real-time connectivity monitoring to your hub:
 
 ```dart
-class Api extends KRestApiBase with KApiCacheMixin, KApiMonitorMixin {
+class Api extends KRestApiBase with KInternetCheckerMixin {
   static final instance = Api._();
   Api._();
 }
@@ -352,8 +335,8 @@ Add to both `macos/Runner/DebugProfile.entitlements` and `macos/Runner/Release.e
 ```dart
 import 'package:kickin_network/kickin_network.dart';
 
-// ── Hub ──────────────────────────────────────────────────────────────
-class Api extends KRestApiBase with KApiCacheMixin {
+// ── Hub ──────────────────────────────────────────────────────────────────
+class Api extends KRestApiBase {
   Api._();
   static final instance = Api._();
 
@@ -362,7 +345,6 @@ class Api extends KRestApiBase with KApiCacheMixin {
   Future<void> init() async {
     await super.intialize(
       baseUrl: 'https://api.myapp.com',
-      syncCacheToStorage: true,
       logOptions: LogOptions.debugAll(),
     );
 
@@ -422,8 +404,7 @@ Future<void> main() async {
 
 | Class / Mixin | Purpose |
 |---|---|
-| `KRestApiBase` | Base class for your app's API hub |
-| `KApiCacheMixin` | Adds in-memory + optional disk caching to the hub |
+| `KRestApiBase` | Base class for your app's API hub (includes in-memory cache) |
 | `KApiMonitorMixin` | Adds internet connectivity monitoring to the hub |
 | `KRestApi<T>` | Base class for feature API clients |
 | `KRestRequest<T>` | Base class for all request wrappers |

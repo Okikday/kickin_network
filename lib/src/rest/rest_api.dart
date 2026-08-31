@@ -5,16 +5,15 @@ part of 'rest_api_base.dart';
 /// Subclasses receive their parent [KRestApiBase] through the constructor and
 /// can read shared state such as [baseUrl] and per-client cache values from it.
 ///
+/// Cache accessors ([cache], [setCache], [clearCache]) delegate to the parent's
+/// built-in in-memory cache, scoped by [id].
+///
 /// Example:
 /// ```dart
 /// class ChatsApi extends KRestApi<Map<String, dynamic>> {
 ///   ChatsApi(super.parent);
 /// }
 /// ```
-///
-/// Cache accessors ([cache], [setCache], [clearCache]) require the parent to
-/// have the [KApiCacheMixin] mixin applied. A clear assert fires at runtime if it
-/// doesn't.
 abstract class KRestApi<CacheType> {
   final KRestApiBase _parent;
   KRestApi(this._parent);
@@ -31,36 +30,27 @@ abstract class KRestApi<CacheType> {
   @protected
   String get baseUrl => _parent._baseUrl;
 
-  /// Returns the [KApiCacheMixin] mixin from the parent, asserting it is present.
-  KApiCacheMixin get _cache {
-    assert(
-      _parent is KApiCacheMixin,
-      '$runtimeType tried to access the cache but ${_parent.runtimeType} '
-      'does not have the KApiCacheMixin mixin. '
-      'Add it: `class ${_parent.runtimeType} extends KRestApiBase with KApiCacheMixin`',
-    );
-    return _parent as KApiCacheMixin;
-  }
-
   // =================================================
   // Cache accessors
   // =================================================
 
   @protected
-  CacheType? get cache => _cache.getCache<CacheType>(id);
+  CacheType? get cache => _parent.getCache<CacheType>(id);
 
   @protected
-  void setCache(CacheType value) => _cache.setCache<CacheType>(id, value);
+  void setCache(CacheType value) => _parent.setCache<CacheType>(id, value);
 
   @protected
-  void clearCache() => _cache.removeCache(id);
+  void clearCache() => _parent.removeCache(id);
 
   // =================================================
   // Helpers
   // =================================================
 
   @protected
-  Map<String, String> headerWithJsonContentType([Map<String, String>? headers]) {
+  Map<String, String> headerWithJsonContentType([
+    Map<String, String>? headers,
+  ]) {
     final h = headers ?? {};
     h['Content-Type'] = 'application/json';
     return h;
