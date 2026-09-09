@@ -4,6 +4,8 @@ A Flutter package for making HTTP requests cleanly and reliably. It is built on 
 
 Part of the **Kickin** toolkit for Flutter.
 
+> 🤖 **AI Agent & LLM Cookbook:** For architecture patterns, conventions, code snippets, and AI recipes, see [`skills.md`](skills.md).
+
 ---
 
 ## Installation
@@ -107,14 +109,19 @@ Each request type has a few ways to execute it. Pick the one that fits your use 
 
 ## Request types
 
-| Class | HTTP method |
-|---|---|
-| `KGetRequest` | GET |
-| `KPostRequest` | POST |
-| `KPutRequest` | PUT |
-| `KPatchRequest` | PATCH |
-| `KDeleteRequest` | DELETE |
-| `KDownloadRequest` | GET (file download) |
+| Class | HTTP method | Notes |
+|---|---|---|
+| `KGetRequest` | GET | |
+| `KPostRequest` | POST | Has `onSendProgress` |
+| `KPutRequest` | PUT | Has `onSendProgress` |
+| `KPatchRequest` | PATCH | Has `onSendProgress` |
+| `KDeleteRequest` | DELETE | |
+| `KDownloadRequest` | GET (stream to disk) | Has `savePath`, `fileAccessMode` |
+| `KHeadRequest` | HEAD | |
+| `KRequest` | Any | HTTP method set via `Options.method` |
+| `KFetchRequest` | Any | Takes a full `RequestOptions` object |
+
+Each class also has a `K*UriRequest` mirror (e.g. `KGetUriRequest`, `KPostUriRequest`) that accepts a `Uri` instead of a path string — useful when you have a fully-qualified URI from a redirect, deep-link, or external service. URI variants use `.trySend()` / `.trySendResult()` / `.trySendResponse()` instead of `catchErrorOn*`.
 
 ### Cloning requests for dynamic paths
 
@@ -400,20 +407,84 @@ Future<void> main() async {
 
 ---
 
+## AI / LLM integration
+
+`kickin_network` is a good fit for AI APIs because they are just REST endpoints. Give your AI backend its own `KRestApiBase` hub so its interceptors, base URL, and error format stay isolated from your app's backend.
+
+```dart
+class AiApi extends KRestApiBase {
+  static final instance = AiApi._();
+  AiApi._();
+
+  late final chat = ChatApi(this);
+
+  Future<void> init(String apiKey) async {
+    await super.intialize(baseUrl: 'https://api.openai.com/v1');
+    primaryInterceptors.add(
+      InterceptorsWrapper(
+        onRequest: (opts, handler) {
+          opts.headers['Authorization'] = 'Bearer $apiKey';
+          opts.headers['Content-Type'] = 'application/json';
+          handler.next(opts);
+        },
+      ),
+    );
+  }
+}
+
+class ChatApi extends KRestApi<ChatCompletion> {
+  ChatApi(super.parent);
+
+  late final _complete = KPostRequest<ChatCompletion>(
+    this,
+    path: '/chat/completions',
+    decoder: (data, _) => ChatCompletion.fromMap(data),
+  );
+}
+
+extension ChatApiExt on ChatApi {
+  Future<ApiResult<ChatCompletion?>> complete({
+    required List<Map<String, String>> messages,
+    String model = 'gpt-4o',
+  }) =>
+      _complete
+          .copyWith(data: {'model': model, 'messages': messages})
+          .catchErrorOnSendResult();
+}
+
+// Usage
+final result = await AiApi.instance.chat.complete(
+  messages: [
+    {'role': 'system', 'content': 'You are a helpful assistant.'},
+    {'role': 'user', 'content': 'Summarise Flutter in one sentence.'},
+  ],
+);
+```
+
+For streaming (SSE), set `options: Options(responseType: ResponseType.stream)` on your request and consume `response.data` as a `ResponseBody` stream.
+
+See [`skills.md`](skills.md) for full recipes: embeddings, SSE streaming, embedding caching, combining AI calls with your backend, and AI-specific error parsing.
+
+---
+
 ## API reference summary
 
 | Class / Mixin | Purpose |
 |---|---|
 | `KRestApiBase` | Base class for your app's API hub (includes in-memory cache) |
-| `KApiMonitorMixin` | Adds internet connectivity monitoring to the hub |
+| `KInternetCheckerMixin` | Adds internet connectivity monitoring to the hub |
 | `KRestApi<T>` | Base class for feature API clients |
-| `KRestRequest<T>` | Base class for all request wrappers |
+| `KRestRequest<T>` | Base class for all path-based request wrappers |
 | `KGetRequest` | HTTP GET |
 | `KPostRequest` | HTTP POST |
 | `KPutRequest` | HTTP PUT |
 | `KPatchRequest` | HTTP PATCH |
 | `KDeleteRequest` | HTTP DELETE |
-| `KDownloadRequest` | File download |
+| `KDownloadRequest` | File download (streams to disk) |
+| `KHeadRequest` | HTTP HEAD |
+| `KRequest` | Any HTTP method (set via `Options.method`) |
+| `KFetchRequest` | Any HTTP method (pass a raw `RequestOptions`) |
+| `KUriRequest` + `K*UriRequest` | URI-based mirrors of all path-based types |
 | `KResponse<Raw, Formatted>` | Full Dio response + typed decoded value |
 | `ApiResult<T>` | Lightweight result type: value or error |
 | `LogOptions` | Configure what gets logged and how |
@@ -421,3 +492,5 @@ Future<void> main() async {
 ---
 
 > WebSocket and GraphQL support are planned for future releases.
+>
+> For patterns, conventions, and AI integration recipes see [`skills.md`](skills.md).
