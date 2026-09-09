@@ -1,5 +1,7 @@
-## 0.0.3
+## 0.0.31
+- Added skill.md for AI
 
+## 0.0.3
 ### ⚠️ Breaking Changes
 - **Removed `KApiCacheMixin`** — in-memory caching is now built directly into `KRestApiBase`. Remove `KApiCacheMixin` from your `with` clause.
 - **Removed `syncCacheToStorage` and `cacheBoxName` parameters** from `KRestApiBase.intialize()`. Disk persistence is no longer handled by this package — use your own storage solution if needed.
