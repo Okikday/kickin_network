@@ -1,3 +1,6 @@
+## 0.0.32
+- fixed a typo in method: (KRestApiBase.initialize) -> (breaking change)
+
 ## 0.0.31
 - Added skill.md for AI
 
