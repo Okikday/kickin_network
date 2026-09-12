@@ -50,7 +50,9 @@ class PostsApi extends KRestApi<List<Map<String, dynamic>>> {
 
   /// Always fetches a single post by [id] — no caching at this level.
   Future<Map<String, dynamic>?> fetchById(int id) {
-    return _single.copyWith(pathTransform: (path) => '$path/$id').catchErrorOnSend();
+    return _single
+        .copyWith(pathTransform: (path) => '$path/$id')
+        .catchErrorOnSend();
   }
 
   /// Invalidates the cached post list.
@@ -86,7 +88,7 @@ class UsersApi extends KRestApi<Map<String, dynamic>> {
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  await AppApi.shared.intialize(
+  await AppApi.shared.initialize(
     baseUrl: 'https://jsonplaceholder.typicode.com',
     monitorActivities: true,
     logOptions: const LogOptions.normal(),
@@ -203,7 +205,10 @@ class _Body extends StatelessWidget {
         if (user != null)
           Padding(
             padding: const EdgeInsets.all(16),
-            child: Text('Signed in as ${user!['name']}', style: Theme.of(context).textTheme.titleMedium),
+            child: Text(
+              'Signed in as ${user!['name']}',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
           ),
         Expanded(
           child: ListView.builder(
@@ -212,7 +217,11 @@ class _Body extends StatelessWidget {
               final post = posts[i];
               return ListTile(
                 title: Text(post['title'] as String? ?? ''),
-                subtitle: Text(post['body'] as String? ?? '', maxLines: 2, overflow: TextOverflow.ellipsis),
+                subtitle: Text(
+                  post['body'] as String? ?? '',
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
                 leading: CircleAvatar(child: Text('${post['id']}')),
               );
             },

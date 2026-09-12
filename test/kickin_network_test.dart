@@ -117,14 +117,17 @@ void main() {
       expect(api.items.id, contains('_ItemsApi'));
     });
 
-    test('two clients of the same type do not share cache when id is overridden', () {
-      final items2 = _ItemsApi2(api);
-      api.items.setCache('for_items');
-      items2.setCache('for_items2');
+    test(
+      'two clients of the same type do not share cache when id is overridden',
+      () {
+        final items2 = _ItemsApi2(api);
+        api.items.setCache('for_items');
+        items2.setCache('for_items2');
 
-      expect(api.items.cache, 'for_items');
-      expect(items2.cache, 'for_items2');
-    });
+        expect(api.items.cache, 'for_items');
+        expect(items2.cache, 'for_items2');
+      },
+    );
 
     test('headerWithJsonContentType includes Content-Type', () {
       final headers = api.items.headerWithJsonContentType();
@@ -132,7 +135,9 @@ void main() {
     });
 
     test('headerWithJsonContentType merges with existing headers', () {
-      final headers = api.items.headerWithJsonContentType({'Authorization': 'Bearer tok'});
+      final headers = api.items.headerWithJsonContentType({
+        'Authorization': 'Bearer tok',
+      });
       expect(headers['Authorization'], 'Bearer tok');
       expect(headers['Content-Type'], 'application/json');
     });
@@ -152,21 +157,22 @@ void main() {
     });
 
     test('baseUrl is set after initialize', () async {
-      await api.intialize(baseUrl: 'https://api.example.com');
+      await api.initialize(baseUrl: 'https://api.example.com');
       expect(api.items.baseUrl, 'https://api.example.com');
     });
 
     test('joinWithBaseUrl concatenates correctly', () async {
-      await api.intialize(baseUrl: 'https://api.example.com');
-      expect(api.items.joinWithBaseUrl('/users'), 'https://api.example.com/users');
+      await api.initialize(baseUrl: 'https://api.example.com');
+      expect(
+        api.items.joinWithBaseUrl('/users'),
+        'https://api.example.com/users',
+      );
     });
 
     test('initialize without baseUrl leaves it empty', () async {
-      await api.intialize();
+      await api.initialize();
       expect(api.items.baseUrl, '');
     });
-
-
   });
 
   // ---------------------------------------------------------------------------

@@ -23,6 +23,7 @@ abstract class KRestApi<CacheType> {
   /// the same parent.
   late final id = "${_parent.runtimeType}_$runtimeType";
 
+  KRestApiBase get parent => _parent;
   // =================================================
   // Convenience getters
   // =================================================

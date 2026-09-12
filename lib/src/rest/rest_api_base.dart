@@ -112,7 +112,7 @@ abstract class KRestApiBase {
   ///                        disable prefixing.
   /// [monitorActivities]  – Enables activity logging (debug mode only).
   /// [logOptions]         – Controls log verbosity and format.
-  Future<void> intialize({
+  Future<void> initialize({
     String? baseUrl,
     bool monitorActivities = kDebugMode,
     LogOptions logOptions = const LogOptions.normal(),
