@@ -123,7 +123,8 @@ abstract class KRestApiBase {
     if (baseUrl != null && baseUrl.endsWith('/')) {
       log(
         "Warning: baseUrl should not end with a trailing slash. "
-        "You may encounter unexpected behavior when constructing request URLs. ",
+        "You may encounter unexpected behavior when constructing request URLs."
+        "You can fix this by removing the trailing slash from the baseUrl.",
         name: "KRestApiBase.initialize",
         level: 900,
       );
