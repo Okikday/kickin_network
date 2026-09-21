@@ -120,6 +120,14 @@ abstract class KRestApiBase {
     _enabledMonitoring = monitorActivities;
     _baseUrl = baseUrl ?? '';
     _logOptions = logOptions;
+    if (baseUrl != null && baseUrl.endsWith('/')) {
+      log(
+        "Warning: baseUrl should not end with a trailing slash. "
+        "You may encounter unexpected behavior when constructing request URLs. ",
+        name: "KRestApiBase.initialize",
+        level: 900,
+      );
+    }
   }
 
   // =================================================

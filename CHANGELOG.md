@@ -1,3 +1,6 @@
+## 0.0.33
+- add warning for trailing slash in baseUrl to prevent unexpected behavior
+
 ## 0.0.32
 - fixed a typo in method: (KRestApiBase.initialize) -> (breaking change)
 
