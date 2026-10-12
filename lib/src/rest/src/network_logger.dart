@@ -33,6 +33,57 @@ class NetworkLog {
   static void error(String message, [dynamic error, StackTrace? st]) =>
       _logger.e(message, error: error, stackTrace: st);
 
+  /// Pretty JSON for the logs. Values JSON can't hold (multipart forms and
+  /// their files, streams, dates, any other object) are described instead,
+  /// so a log line never fails because of what a request carries.
+  static final JsonEncoder _encoder = JsonEncoder.withIndent('  ', _describe);
+
+  /// [value] as pretty JSON for a log line (non-JSON values described).
+  @visibleForTesting
+  static String encode(Object? value) => _encoder.convert(value);
+
+  static Object? _describe(dynamic value) => switch (value) {
+    FormData() => {
+      if (value.fields.isNotEmpty)
+        'fields': {for (final f in value.fields) f.key: f.value},
+      if (value.files.isNotEmpty)
+        'files': [
+          for (final f in value.files) '${f.key}: ${_describeFile(f.value)}',
+        ],
+    },
+    MultipartFile() => _describeFile(value),
+    DateTime() => value.toIso8601String(),
+    ResponseBody() => value.contentLength >= 0
+        ? '<stream, ${value.contentLength} bytes>'
+        : '<stream>',
+    Stream() => '<stream>',
+    Map() => {for (final e in value.entries) '${e.key}': e.value},
+    Iterable() => value.toList(),
+    _ => value.toString(),
+  };
+
+  // "photo.jpg (image/jpeg, 52310 bytes)".
+  static String _describeFile(MultipartFile file) {
+    final type = file.contentType?.mimeType;
+    final about = [?type, '${file.length} bytes'].join(', ');
+    return '${file.filename ?? 'file'} ($about)';
+  }
+
+  // A logging failure must never fail the request: fall back to [title] alone.
+  static void _safely(
+    String title,
+    void Function() log,
+    void Function(String) fallback,
+  ) {
+    try {
+      log();
+    } catch (e) {
+      try {
+        fallback('$title\n(log details unavailable: $e)');
+      } catch (_) {}
+    }
+  }
+
   /// Centralized logging for network requests.
   static void logRequest({
     required LogOptions logOptions,
@@ -61,12 +112,13 @@ class NetworkLog {
     }
 
     final title = 'Request($method): $pathOrUri';
-    if (output.isNotEmpty) {
-      final prettyJson = const JsonEncoder.withIndent('  ').convert(output);
-      request('$title\n$prettyJson');
-    } else {
-      request(title);
-    }
+    _safely(title, () {
+      if (output.isNotEmpty) {
+        request('$title\n${_encoder.convert(output)}');
+      } else {
+        request(title);
+      }
+    }, request);
   }
 
   /// Centralized logging for network responses.
@@ -124,23 +176,35 @@ class NetworkLog {
       output['Error Details'] = result.error.toString();
     }
 
+    // No status: the request failed before (or without) a response — say why.
+    if (!isOk &&
+        logOptions.parts.contains(LogPart.errors) &&
+        error != null &&
+        !output.containsKey('Error Details')) {
+      output['Exception'] = error is DioException
+          ? '${error.type.name}: ${error.message ?? error.error ?? ''}'.trim()
+          : error.toString();
+    }
+
     final title = 'Response(${result.statusCode ?? 'ERR'}): $pathOrUri';
 
-    final prettyJson =
-        (output.isNotEmpty
-                ? '\n${const JsonEncoder.withIndent('  ').convert(output)}'
-                : '')
+    String details() =>
+        (output.isNotEmpty ? '\n${_encoder.convert(output)}' : '')
             .replaceAll('\\n', '\n')
             .replaceAll('\\t', '\t')
             .replaceAll('\\r', '');
 
     if (isOk) {
-      success('$title$prettyJson');
+      _safely(title, () => success('$title${details()}'), success);
     } else {
-      NetworkLog.error(
-        '$title$prettyJson',
-        logOptions.logAllError ? error : null,
-        logOptions.logAllError ? stackTrace : null,
+      _safely(
+        title,
+        () => NetworkLog.error(
+          '$title${details()}',
+          logOptions.logAllError ? error : null,
+          logOptions.logAllError ? stackTrace : null,
+        ),
+        NetworkLog.error,
       );
     }
   }

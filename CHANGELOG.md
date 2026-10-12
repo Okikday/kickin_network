@@ -1,3 +1,14 @@
+## 0.0.35
+- fix: prevent network logging failures from crashing non-JSON requests and add body descriptors
+
+## 0.0.34
+- Fixed: in debug mode, requests whose body isn't plain JSON (`FormData` / `MultipartFile` uploads, streams, dates)
+  were never sent. Logging the request threw inside `_send`, so the call failed with `Response(ERR)` and no request
+  log. Logging can no longer fail a request or turn a successful response into an error.
+- Request / response logs now describe such bodies: form fields as-is, each file as `key: name (type, N bytes)`,
+  streams as `<stream>`, dates as ISO 8601, non-string map keys stringified.
+- Failed requests without a response now log the reason (`Exception`) under `LogPart.errors`.
+
 ## 0.0.33
 - add warning for trailing slash in baseUrl to prevent unexpected behavior
 

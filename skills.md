@@ -334,6 +334,8 @@ Future<ApiResult<bool?>> uploadAlbum(
 }
 ```
 
+In debug logs a multipart body shows its fields and one line per file (`cover: photo.jpg (image/jpeg, 52310 bytes)`); the bytes are never logged.
+
 Track upload progress by passing `onSendProgress` to the original `KPostRequest`:
 
 ```dart

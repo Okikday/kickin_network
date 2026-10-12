@@ -1,5 +1,7 @@
 // ignore_for_file: overridden_fields, invalid_use_of_protected_member
 
+import 'dart:typed_data';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kickin_network/kickin_network.dart';
 
@@ -25,6 +27,55 @@ class _ItemsApi2 extends KRestApi<String> {
   @override
   late final id = '_ItemsApi2_override';
 }
+
+/// A client with a multipart upload, sent through [_RecordingAdapter].
+class _UploadApi extends KRestApi<String> {
+  _UploadApi(super.parent);
+
+  late final upload = KPostRequest<bool>(
+    this,
+    path: '/uploads',
+    decoder: (_, res) => res.statusCode == 200,
+  );
+}
+
+class _UploadRoot extends KRestApiBase {
+  late final uploads = _UploadApi(this);
+}
+
+/// Records what reaches the network and answers 200 `{"ok": true}`.
+class _RecordingAdapter implements HttpClientAdapter {
+  final requests = <RequestOptions>[];
+
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<Uint8List>? requestStream,
+    Future<void>? cancelFuture,
+  ) async {
+    requests.add(options);
+    await requestStream?.drain<void>();
+    return ResponseBody.fromString(
+      '{"ok": true}',
+      200,
+      headers: {
+        Headers.contentTypeHeader: [Headers.jsonContentType],
+      },
+    );
+  }
+
+  @override
+  void close({bool force = false}) {}
+}
+
+FormData _form() => FormData.fromMap({
+  'title': 'Cover',
+  'cover': MultipartFile.fromBytes(
+    [1, 2, 3],
+    filename: 'cover.png',
+    contentType: DioMediaType('image', 'png'),
+  ),
+});
 
 // =============================================================================
 // Helpers
@@ -240,6 +291,75 @@ void main() {
       // Give the stream a moment — nothing should arrive while paused.
       await Future<void>.delayed(const Duration(milliseconds: 50));
       expect(received, isEmpty);
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // NetworkLog
+  // ---------------------------------------------------------------------------
+
+  group('NetworkLog', () {
+    test('describes multipart bodies instead of failing to encode them', () {
+      final json = NetworkLog.encode({'Body': _form()});
+      expect(json, contains('"title": "Cover"'));
+      expect(json, contains('cover: cover.png (image/png, 3 bytes)'));
+    });
+
+    test('describes other non-JSON values (dates, sets, streams)', () {
+      final json = NetworkLog.encode({
+        'at': DateTime.utc(2026, 1, 2),
+        'tags': {'a', 'b'},
+        'body': Stream<int>.empty(),
+        1: 'non-string key',
+      });
+      expect(json, contains('2026-01-02T00:00:00.000Z'));
+      expect(json, contains('"a"'));
+      expect(json, contains('<stream>'));
+      expect(json, contains('"1": "non-string key"'));
+    });
+
+    test('logging a request or a failed response never throws', () {
+      expect(
+        () => NetworkLog.logRequest(
+          logOptions: LogOptions.debugAll(),
+          method: 'POST',
+          pathOrUri: '/uploads',
+          data: _form(),
+          headers: {'Authorization': 'Bearer x'},
+        ),
+        returnsNormally,
+      );
+      expect(
+        () => NetworkLog.logResponse(
+          logOptions: LogOptions.debugAll(),
+          method: 'POST',
+          pathOrUri: '/uploads',
+          result: Response<dynamic>(
+            requestOptions: RequestOptions(path: '/uploads'),
+            data: ResponseBody.fromString('', 200),
+          ),
+          error: StateError('offline'),
+        ),
+        returnsNormally,
+      );
+    });
+
+    test('a multipart request is sent (and decoded) with full logging on', () async {
+      final root = _UploadRoot();
+      await root.initialize(
+        baseUrl: 'https://example.test',
+        logOptions: LogOptions.debugAll(),
+      );
+      final adapter = _RecordingAdapter();
+      root.setPrimaryDio(Dio()..httpClientAdapter = adapter);
+
+      final result = await root.uploads.upload
+          .copyWith(data: _form())
+          .catchErrorOnSendResult();
+
+      expect(adapter.requests, hasLength(1), reason: 'the upload reached the network');
+      expect(adapter.requests.single.data, isA<FormData>());
+      expect(result.value, isTrue);
     });
   });
 }
