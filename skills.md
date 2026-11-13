@@ -334,6 +334,11 @@ Future<ApiResult<bool?>> uploadAlbum(
 }
 ```
 
+For Flutter web, browser code cannot read an arbitrary local filesystem path.
+Use bytes supplied by a browser file picker with `MultipartFile.fromBytes`
+instead of `MultipartFile.fromFile`. The server must also allow the web app's
+origin through CORS.
+
 In debug logs a multipart body shows its fields and one line per file (`cover: photo.jpg (image/jpeg, 52310 bytes)`); the bytes are never logged.
 
 Track upload progress by passing `onSendProgress` to the original `KPostRequest`:
@@ -367,6 +372,10 @@ Future<ApiResult<dynamic>> downloadReport(String savePath) =>
         )
         .catchErrorOnSendResult();
 ```
+
+On Flutter web, the browser handles the download. Treat `savePath` as the
+suggested download filename, not a local filesystem path. Native-only options
+such as append mode are not supported by the browser download adapter.
 
 ---
 
@@ -909,7 +918,7 @@ This prevents Dio from throwing on 4xx/5xx, letting `KResponse.error` carry the 
 | `KPutRequest` | PUT | Has `onSendProgress` |
 | `KPatchRequest` | PATCH | Has `onSendProgress` |
 | `KDeleteRequest` | DELETE | |
-| `KDownloadRequest` | GET (stream to disk) | Has `savePath`, `fileAccessMode` |
+| `KDownloadRequest` | GET (save/download response) | Has `savePath`, `fileAccessMode`; web uses browser downloads |
 | `KHeadRequest` | HEAD | |
 | `KRequest` | Any (via `Options.method`) | Generic method |
 | `KFetchRequest` | Any | Pass a full `RequestOptions` |

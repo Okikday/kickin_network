@@ -344,22 +344,29 @@ void main() {
       );
     });
 
-    test('a multipart request is sent (and decoded) with full logging on', () async {
-      final root = _UploadRoot();
-      await root.initialize(
-        baseUrl: 'https://example.test',
-        logOptions: LogOptions.debugAll(),
-      );
-      final adapter = _RecordingAdapter();
-      root.setPrimaryDio(Dio()..httpClientAdapter = adapter);
+    test(
+      'a multipart request is sent (and decoded) with full logging on',
+      () async {
+        final root = _UploadRoot();
+        await root.initialize(
+          baseUrl: 'https://example.test',
+          logOptions: LogOptions.debugAll(),
+        );
+        final adapter = _RecordingAdapter();
+        root.setPrimaryDio(Dio()..httpClientAdapter = adapter);
 
-      final result = await root.uploads.upload
-          .copyWith(data: _form())
-          .catchErrorOnSendResult();
+        final result = await root.uploads.upload
+            .copyWith(data: _form())
+            .catchErrorOnSendResult();
 
-      expect(adapter.requests, hasLength(1), reason: 'the upload reached the network');
-      expect(adapter.requests.single.data, isA<FormData>());
-      expect(result.value, isTrue);
-    });
+        expect(
+          adapter.requests,
+          hasLength(1),
+          reason: 'the upload reached the network',
+        );
+        expect(adapter.requests.single.data, isA<FormData>());
+        expect(result.value, isTrue);
+      },
+    );
   });
 }

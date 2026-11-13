@@ -1,12 +1,15 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:developer';
-import 'dart:io';
 
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:internet_connection_checker_plus/internet_connection_checker_plus.dart';
 import 'package:logger/logger.dart';
+
+import 'src/platform_error_stub.dart'
+    if (dart.library.io) 'src/platform_error_io.dart'
+    as platform_error;
 
 export 'package:dio/dio.dart' show CancelToken, Options, FileAccessMode;
 
@@ -257,13 +260,11 @@ abstract class KRestApiBase {
         DioExceptionType.unknown =>
           'An unexpected error occurred. Please try again.',
       },
-      CertificateException c => c.message,
-      HandshakeException h => h.message,
-      SocketException s => s.message,
       TimeoutException t => t.message,
       FormatException f => f.message,
       _ => null,
     };
+    errorObj ??= platform_error.message(error);
 
     shouldLogError(logOptions, error, errorObj, st);
     if (errorObj == null) {

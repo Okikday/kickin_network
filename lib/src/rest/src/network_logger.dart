@@ -53,9 +53,10 @@ class NetworkLog {
     },
     MultipartFile() => _describeFile(value),
     DateTime() => value.toIso8601String(),
-    ResponseBody() => value.contentLength >= 0
-        ? '<stream, ${value.contentLength} bytes>'
-        : '<stream>',
+    ResponseBody() =>
+      value.contentLength >= 0
+          ? '<stream, ${value.contentLength} bytes>'
+          : '<stream>',
     Stream() => '<stream>',
     Map() => {for (final e in value.entries) '${e.key}': e.value},
     Iterable() => value.toList(),
@@ -143,8 +144,8 @@ class NetworkLog {
     if (logOptions.parts.contains(LogPart.queryParams)) {
       final qp = result is Response
           ? (result.requestOptions.queryParameters.isNotEmpty
-              ? result.requestOptions.queryParameters
-              : queryParams)
+                ? result.requestOptions.queryParameters
+                : queryParams)
           : queryParams;
       if (qp != null && qp.isNotEmpty) {
         output['Query'] = qp;

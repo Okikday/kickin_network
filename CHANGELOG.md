@@ -1,3 +1,7 @@
+## 0.0.36
+- Added Flutter web compatibility by isolating `dart:io` socket and TLS error handling behind a conditional import.
+- Documented browser requirements and file upload/download behavior.
+
 ## 0.0.35
 - fix: prevent network logging failures from crashing non-JSON requests and add body descriptors
 

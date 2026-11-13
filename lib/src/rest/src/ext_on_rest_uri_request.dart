@@ -92,4 +92,3 @@ extension ExtraExtOnRestUriRequest<TDecoded> on KUriRequest<TDecoded> {
     );
   }
 }
-

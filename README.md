@@ -18,7 +18,7 @@ Or add it manually to your `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  kickin_network: ^0.0.35
+  kickin_network: ^0.0.36
 ```
 
 ---
@@ -334,6 +334,14 @@ Add to both `macos/Runner/DebugProfile.entitlements` and `macos/Runner/Release.e
 <key>com.apple.security.network.client</key>
 <true/>
 ```
+
+### Web
+
+HTTP requests run through the browser, so the API server must allow your web
+app's origin with the appropriate CORS headers. For uploads, provide file bytes
+from a browser file picker rather than using a local filesystem path. Downloads
+are handled by the browser; `savePath` is a suggested filename, not a path to
+an arbitrary local file.
 
 ---
 
